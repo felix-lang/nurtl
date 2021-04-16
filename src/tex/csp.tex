@@ -15,15 +15,14 @@
 \hypersetup{pdftex,colorlinks=true,allcolors=blue}
 \usepackage{hypcap}
 
-\title{Advanced Programming in C++}
+\title{Communicating Sequential Processes\\ in C++}
 \author{John Skaller}
 \begin{document}
 \maketitle
 \tableofcontents
 \chapter{Introduction}
 Blah.
-\chapter{Communicating Sequential Processes}
-\section{Overview}
+\chapter{Overview}
 The Felix programming language uses a novel architecture which is related to
 Tony Hoare's communicating sequential process (CSP) model. We will document
 the design and implementation but our primary goal here is to allow the
@@ -37,25 +36,151 @@ with the motivation and design issues. The problem is all such architectures
 involve complex interactions between components which cannot be introduced
 sequentially; but humans learn in steps.
 
-\section{Phase 1}
-\subsection{Continuations}
+\chapter{Phase 1}
+\section{Continuations}
 A {\em continuation} is an object which encapsulates the future of a program.
-What has already happened is called the history, it is represented by a sequence
-of significant events called a {\em trace}.
+What has already happened is called the {\em history,} it is represented by a sequence
+of significant events called a {\em trace.}
 
-In a traditional system, when a subroutine is called, the caller is suspended
+In a traditional system, when a subroutine is called, the caller is {\em suspended}
 with its state saved on the machine stack, and a value containing the address
 of the next instruction to be executed after the subroutine being called
 returns, is passed to that subroutine. This is called the {\em return address.}
 
 When the subroutine is finished its work, it sets the program counter
 to the return address and the stack pointer back to the stack frame of the
-caller, thereby resuming the caller.
+caller, thereby {\em resuming} the caller.
 
 The callers data frame, together with the return address, is a {\em continuation,}
 and in particular, the {\em current continuation} at the point of the subroutine 
-call.
+call. 
 
+\section{Contracts}
+The caller and callee form {\em client-server} relationship,
+somewhat politically incorrectly also called a {\em master-slave}
+relationship. The relationship is established by a call with expectation
+a service will be perfomed based on the notion of a contract in which
+the duties of the parties are established, usually with {\em static typing}
+but also with {\em documentation}. 
+
+The client obligation is expressed by the argument types and additional
+constraints known as the pre-conditions, which are the expectations
+of the service provider. This is one side of the contract. On the
+other side the client expects a certain result known as the postconditions
+to be met and the service provider, in accepting arguments conforming
+to the pre-condition agreement, accepts the responsibility to satisfy
+them. The postcondition usually consists of a return value of a particular
+type also meeting additional constraints, together with a performance
+expectation. For a functions, the minimal expectation is that the
+subroutine actually completes its task, which is known as {\em termination}.
+
+\section{Enforcement}
+In many systems machinery known as a static type system is used to
+partially enforce the terms of a contract as follows: if a violation
+of the contract is discovered by the language translator, transation
+is terminated with a violation report so that the programmer or
+programmers responsible for the encodings can share a coffee and
+discuss how to correct the deficiency.
+
+It may the caller has passed the wrong arguments, but the contract
+itself may be inappropriate.
+
+Enforcement of other constraints can be attempted with dynamic
+checks and the flow of control annotated with event information
+in debug traces.
+
+\subsection{Proof}
+A type system is implemented with an algorithm that attempts to
+prove correct typing. An contract violation is reported if
+the system is unable to construct a proof.  In simple systems
+the proof is usually nothing more than a check that the 
+argument types of a subroutine call match the specified types
+of the parameters; and, the type of the return value matches
+the specified return type. In the first case, {\em blame} is
+layed on the caller, and thus its author, whereas in the latter,
+it is layed on the subroutine, and thus its author.
+
+In this way the system can be used to select the author who
+may be responsible for correcting the defect; remember, however,
+that the contract itself may be inappropriate: perhaps the caller
+was right and the subroutine should have accepted the given arguments
+after all?
+
+In more advanced systems like C++, argument and parameter types
+do not have to be identical. It is acceptable that the argument
+be a subtype of the specified parameter type, due to the notion
+that a value which a type which is a subtype of another, is also
+a value of that wider type. Furthermore, with the notion of overloading,
+multiple functions accepting different argument types might be provided.
+If a suitable function is not found for given arguments, perhaps
+the caller should choose different arguments, but perhaps instead
+a new overload is required.
+
+\subsection{Design by proof}
+Type systems only provide a low level of contract enforcement.
+In particular, the absence of a type error does not prove
+the overall contract of the program is satisfied.
+
+A situation where a high level contract is satisfied is known
+as {\em correctness.} If a program is incorrect, it is possible to
+provide a proof with a counterexample, that is, an input for
+which an acceptable answer is not provided. Often, this will
+be because no answer is provided at all because the program
+goes into an infinite loop or crashes.
+
+Proving a program or subroutine is correct is often difficult.
+The key idea here, which cannot be overstated, is that your
+design, and coding, should be {\em driven by a the idea of a proof},
+even if your proof is not written out. Programming by contract
+is a methodology in which you sketch a proof by breaking the
+proof down into a set of discrete but interrelated sub-proofs.
+
+In mathematics, these sub-proofs are called lemmas or theorems.
+
+\section{Peer to Peer Design}
+Whilst subroutines and the correpsonding master-slave relationships
+provide concept of modularity which allows breaking down a problem
+into a set of service provides, each with its own contract,
+thereby facilitating {\em reasoning} about a program; complex relationships
+built entirely this way can be difficult to manage.
+
+A good program also contains modules which have {\em peer-to-peer}
+relations, in which each party is a willing and voluntary
+participant. The parties both accept some responsibility and each
+has the authority and capability to carry out their part of the
+bargain. In return, each expects the other party to honour its
+committments.
+
+The peer-to-peer unit of modularity corresponding to a subroutine
+is called a {\em coroutine.} There are various methods by which
+coroutines can cooperate but the one we will focus on is a device
+called a channel. The idea of a channel is that data can be read or
+written by coroutines on channels, and other coroutines sharing
+access to these channels can write data to service a reader,
+whilst a reader can read it, to service a write request.
+A coroutine can access multiple channels, and so can play the role
+of a reader at one point, and a writer at another.
+
+Coroutines are notionally infinite loops that process streams
+of data, whilst channels connections determine the data flow
+topology. Along with this new model, we also need new kinds of contracts.
+Using type systems to an obvious approach, but this is a new and
+open research field; the types requires are often calles
+{\em session types} because they specify the contracts for
+a series of interactions.
+
+We will start our development by showing coroutines {\em subsume}
+subroutines. This means that anything you can do with subroutines
+can also be done with coroutines. I will state now quite clearly
+that this does {\em not} all subroutines should be replaced.
+Contrarily, the programmer how has two models of computation that
+can be used together.
+
+Indeed, starting with C++ our primary coding machinery uses the
+subroutine model and we will have to use that to implement 
+coroutines.
+
+\section{Emulating Subroutines}
 We are going to develop a technique in which a heap allocated frame is
 used to hold local data instead of the machine stack, these frames
 will be linked with pointers forming a so-called {\em spaghetti stack}.
@@ -305,7 +430,7 @@ set of fibres until there is no work left to do. It uses a round-robin
 scheduling strategy which attempts to be "fair", executing one "step" 
 of each thread in turn. 
 
-\section{Phase 2}
+\chapter{Phase 2}
 \subsection{Faster Please}
 The round robin scheduler above using a C++ standard library queue is very slow.
 The reason is the library routine will allocate nodes in a doubly linked list
@@ -1280,7 +1405,7 @@ int main() {
   // push initial fibres onto scheduler active list
   sched.active_set->push_new(prod);
   sched.active_set->push_new(trans);
-  sched.active_set->push_new(cons);
+  sched.active_set->push_new(https://www.microsoft.com/en-au/microsoft-365/visio/flowchart-softwarecons);
  
   // run it
   sched.sync_run();
@@ -1348,11 +1473,39 @@ correctly using a general garbage collector, but our aim here is to build a syst
 capable of real time operation which excludes the use of a naive mark/sweep
 world stop collector.
 
-However there is no other way without constraints. A continuation may have two
-copies of a channel reference, so we'd need to subtract two from the reference
-count, similarly, we have to subtract a value from all channel reference
-counts the fibre holds, not just the one we are doing I/O on.
+Some wag once said that all problems in computer science can be solved by adding
+another level of indirection. Let us try!
 
+We will add a new concept, a channel endpoint, which is a reference counting
+smart pointer to a channel. Then we will use a standard C++ \verb%shared_ptr%
+to a a channel endpoint as a way to distribute access to channels. We will provide
+a channel constructor that returns several endpoints, and a requirement that
+at most one endpoint is accessible by any fibre.
+
+Now when the top level smart pointer decrements the counter of a channel endpoint
+to zero, the endpoint is deleted as usual but the destructor does something else:
+it decrements the channel reference count. When all the endpoints are deleted,
+the channel is also deleted. This is all standard but now for the trick:
+when a fibre does I/O on a channel it does so through a channel endpoint.
+If the channel has reference count one, the channel and the sole endpoint
+we have are deleted along with all fibres on the channel, otherwise the
+reference count of the channel is decremented. When the fibre is reinstated
+by a matching I/O request the channel reference count is again incremented.
+
+Let us suppose a fibre is hanging on a channel, and another fibre with
+access to the channel through a different endpoint terminates, deleting
+its endpoint. This in turn will delete the channel, and thus the first fibre
+hanging on it. The smart pointers in the continuations will then delete
+the first fibres endpoint, however there's a problem: the channel it refers
+to is already in the process of being deleted. We cannot allow the channel
+to be deleted twice!
+
+Luckily, we can avoid this problem be ensuring we set the channel reference
+count to zero before deleting the fibres of the channel. If during this process
+another endpoint is deleted, it can observe the channel it refers to is
+already being deleted by checking the reference count, and skip deleting it.
+
+\inputminted{c++}{../src/phase4/lib/channel4.hpp}
 
 \end{document}
 
