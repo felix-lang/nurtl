@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstdio>
 #include <atomic>
+#include <memory>
 
 #include "con4.hpp"
 #include "fibre4.hpp"

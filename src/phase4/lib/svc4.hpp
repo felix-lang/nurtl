@@ -8,7 +8,7 @@ enum svc_code_t {
 };
 struct io_request_t {
   svc_code_t svc_code;
-  channel_t *chan;
+  chan_epref_t *chan;
   void **pdata;
 };
 struct spawn_fibre_request_t {

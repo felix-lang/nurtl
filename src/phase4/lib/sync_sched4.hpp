@@ -6,7 +6,6 @@ struct sync_sched {
   active_set_t *active_set;  // chain of fibres ready to run
   ~sync_sched() { active_set->forget(); }
 
-  sync_sched() : current(nullptr), active_set(new active_set_t) {}
   sync_sched(active_set_t *a) : current(nullptr), active_set(a) {}
 
   void sync_run(con_t *);
@@ -17,7 +16,7 @@ struct sync_sched {
 
 // scheduler subroutine runs until there is no work to do
 void sync_sched::sync_run(con_t *cc) {
-  current = new fibre_t(cc);
+  current = new fibre_t(cc, active_set);
   while(current) // while there's work to do 
   {
     svc_req_t *svc_req = current->run_fibre();
@@ -28,6 +27,7 @@ void sync_sched::sync_run(con_t *cc) {
           do_read(&(svc_req->io_request));
           break;
         case write_request_code_e:  
+::std::cout << "sync_sched::sync_run case write_request" << ::std::endl;
           do_write(&(svc_req->io_request));
           break;
         case spawn_fibre_request_code_e:  
@@ -45,7 +45,7 @@ void sync_sched::sync_run(con_t *cc) {
 
 
 void sync_sched::do_read(io_request_t *req) {
-  channel_endpoint_t *chanep = req->chan.get();
+  channel_endpoint_t *chanep = req->chan->get();
   channel_t *chan = chanep->channel;
   while(chan->lock.test_and_set(::std::memory_order_acquire)); // spin
   fibre_t *w = chan->pop_writer();
@@ -80,10 +80,12 @@ void sync_sched::do_read(io_request_t *req) {
 }
 
 void sync_sched::do_write(io_request_t *req) {
-  channel_endpoint_t *chanep = req->chan.get();
+  channel_endpoint_t *chanep = req->chan->get();
   channel_t *chan = chanep->channel;
   while(chan->lock.test_and_set(::std::memory_order_acquire)); // spin
-  fibre_t *r = req->chan->pop_reader();
+::std::cout << "write op acquired lock on channel" << ::std::endl;
+  fibre_t *r = chan->pop_reader();
+::std::cout << "read " << r << ::std::endl;
   if(r) {
     chan->lock.clear(::std::memory_order_release); // release lock
     *r->cc->svc_req->io_request.pdata = 
@@ -115,10 +117,11 @@ void sync_sched::do_write(io_request_t *req) {
 
 
 void sync_sched::do_spawn_fibre(spawn_fibre_request_t *req) {
-  req->tospawn->owner = active_set;
+::std::cout << "do spawn" << ::std::endl;
   current->cc->svc_req=nullptr;
   active_set->push(current);
-  current = new fibre_T(req->tospawn);
+  current = new fibre_t(req->tospawn, active_set);
+::std::cout << "spawned " << current << ::std::endl;
 }
 
 

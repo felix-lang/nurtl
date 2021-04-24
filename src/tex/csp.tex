@@ -21,8 +21,6 @@
 \maketitle
 \tableofcontents
 \chapter{Introduction}
-Blah.
-\chapter{Overview}
 The Felix programming language uses a novel architecture which is related to
 Tony Hoare's communicating sequential process (CSP) model. We will document
 the design and implementation but our primary goal here is to allow the
@@ -36,7 +34,8 @@ with the motivation and design issues. The problem is all such architectures
 involve complex interactions between components which cannot be introduced
 sequentially; but humans learn in steps.
 
-\chapter{Phase 1}
+\chapter{Overview}
+
 \section{Continuations}
 A {\em continuation} is an object which encapsulates the future of a program.
 What has already happened is called the {\em history,} it is represented by a sequence
@@ -180,6 +179,7 @@ Indeed, starting with C++ our primary coding machinery uses the
 subroutine model and we will have to use that to implement 
 coroutines.
 
+\chapter{Phase 1}
 \section{Emulating Subroutines}
 We are going to develop a technique in which a heap allocated frame is
 used to hold local data instead of the machine stack, these frames
@@ -501,17 +501,34 @@ struct sync_sched {
   fibre_t *active;
 
   scheduler() : current(nullptr), active(nullptr) {}
+  void push(fibre_t *fresh);
+  fibre_t *pop();
+  void sync_run();
+};
+\end{minted}
 
-  void push(fibre_t *fresh) { 
+Here are the methods; push:
+
+\begin{minted}{c++}
+  void sync_sched::push(fibre_t *fresh) { 
     fresh->next = active; 
     active = fresh; 
   }
-  fibre_t *pop() {
+\end{minted}
+
+pop:
+
+\begin{minted}{c++}
+  fibre_t *sync_sched::pop() {
     fibre_t *tmp = active;
     active = active->next;
     return tmp;
   }
+\end{minted}
 
+and the scheduler itself:
+
+\begin{minted}{c++}
   void sync_run() {
     while(active) {
      current = active;
@@ -529,11 +546,24 @@ the use of a device called a synchronous channel for communication. A channel
 is nothing more than a list of fibres which is either empty, or all the 
 fibres are waiting to read, or all waiting to write.
 
+Here's the overall data type:
+
 \begin{minted}{c++}
 struct channel_t {
   fibre_t *next;
   channel_t () : next (nullptr) {}
-  ~channel_t() {
+  ~channel_t()[
+  void push_reader(fibre_t r); 
+  void push_writer(fibre_t w); 
+  fibre_t *pop_reader(); 
+  fibre_t *pop_writer();
+};
+\end{minted}
+
+and the destructor:
+
+\begin{minted}{c++}
+  ~channel_t::channel_t() {
     while (next) {
       fibre_t *f = (fibre_t*)*(unitptr_t)next & ~(unitptr_t)1u);
       fibre_t *tmp = f->next;
@@ -541,29 +571,46 @@ struct channel_t {
       next = tmp;
     }
   }
+\end{minted}
+ 
+Now the methods to pop a reader from the channel:
 
-  void push_reader(fibre_t r) { 
+\begin{minted}{c++}
+  void channel_t::push_reader(fibre_t r) { 
     r->next = next; 
     next = r; 
   }
-  void push_writer(fibre_t w) { 
+\end{minted}
+
+and push a writer onto the channel:
+
+\begin{minted}{c++}
+  void channel_t::push_writer(fibre_t w) { 
     w->next = next; 
     next = (fibre_t*)((uintptr_t)w & (uintptr_t)1u); 
   }
+\end{minted}
 
-  fibre_t *pop_reader() { 
+to pop a reader:
+
+\begin{minted}{c++}
+  fibre_t *channel_t::pop_reader() { 
     fibre_t *tmp = next; 
     if((uintptr_t)tmp & (unitptr_t)1u) return nullptr;
     next = next->next; 
     return tmp; 
   }
-  fibre_t *pop_writer() { 
+\end{minted}
+
+and to pop a writer:
+
+\begin{minted}{c++}
+  fibre_t *channel_t::pop_writer() { 
     fibre_t *tmp = next; 
     if(!((uintptr_t)tmp & (unitptr_t)1u)) return nullptr;
     next = (fibre_t*)next->next; 
     return (fibre_t*)((uintptr_t)tmp & ~(uintptr_t)1u); 
   }
-};
 \end{minted}
 
 The casts there are because we're doing a hack!
@@ -577,6 +624,12 @@ If we try to pop a reader from a channel containing writers, we get
 a nullptr back. Similarly if we try to pop a writer from a channel
 containing readers we get a nullptr back. Of course if the channel
 is empty we also get a nullptr back.
+
+Note that the push operations have preconditions: to push a reader,
+the channel must be empty or contain only readers; to push a writer,
+the channel must be empty or contain only writers. We should prove these
+conditions are met at every point these methods are invoked.
+
 
 Now, we have to actually code the I/O operations. Unfortunately
 whilst the rules are simple, the implementation is a bit tricky!
@@ -693,25 +746,33 @@ struct fibre_t {
   fibre_t(fibre_t const&)=delete;
   fibre_t& operator=(fibre_t const&)=delete;
 
-  // destructor deletes any remaining continuations in spaghetti stack
-  ~fibre_t() {
+  ~fibre_t();
+  svc_req_t *run_fibre();
+};
+
+
+The destructor deletes any remaining continuations in spaghetti stack
+
+\begin{minted}{c++}
+  ~fibre_t::fibre_t() {
     while(cc) {
       con_t *tmp = cc->caller;
       delete cc;
       cc = tmp;
     }
   }
+\end{minted}
  
-  // run until either fibre issues a service request or dies
-  svc_req_t *run_fibre() { 
+run until either fibre issues a service request or dies
+
+\begin{minted}{c++}
+  svc_req_t *fibre_t::run_fibre() { 
     while(cc) {
       cc=cc->resume(); 
       if(cc && cc->svc_req) return cc->svc_req;
     }
     return nullptr;
   }
-};
-
 \end{minted}
 
 Here's our new scheduler:
