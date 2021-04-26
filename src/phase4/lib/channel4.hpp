@@ -82,6 +82,7 @@ struct channel_endpoint_t {
   }
 
   ~channel_endpoint_t () {
+::std::cout << "Channel endpoint " << this << " destructor" << ::std::endl; 
     switch (channel->refcnt.load()) {
       case 0: break;
       case 1: delete_channel(); break;

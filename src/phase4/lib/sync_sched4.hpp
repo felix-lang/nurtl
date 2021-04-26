@@ -50,6 +50,7 @@ void sync_sched::do_read(io_request_t *req) {
   while(chan->lock.test_and_set(::std::memory_order_acquire)); // spin
   fibre_t *w = chan->pop_writer();
   if(w) {
+    ++chan->refcnt;
     chan->lock.clear(::std::memory_order_release); // release lock
     *current->cc->svc_req->io_request.pdata =
       *w->cc->svc_req->io_request.pdata; // transfer data
@@ -63,6 +64,7 @@ void sync_sched::do_read(io_request_t *req) {
   }
   else {
     if(chan->refcnt == 1) {
+::std::cout<< "do_read: deleting fibre " << current << ", channel "<< chan <<" should die next" << ::std::endl;
       delete current;
       // deleting the whole fibre deletes all references to the channel
       // end point, which in turn deletes the channel because deleting
@@ -71,6 +73,8 @@ void sync_sched::do_read(io_request_t *req) {
       // this will recursively delete all fibres on the channel.
       // the spinlock will also be deleted so does not need to be cleared.
     } else {
+      --chan->refcnt;
+::std::cout<< "do_read: fibre " << current << ", set channel "<< chan <<" recnt to " << chan->refcnt << ::std::endl;
       chan->push_reader(current);
       chan->lock.clear(::std::memory_order_release); // release lock
     }
@@ -87,6 +91,7 @@ void sync_sched::do_write(io_request_t *req) {
   fibre_t *r = chan->pop_reader();
 ::std::cout << "read " << r << ::std::endl;
   if(r) {
+    ++chan->refcnt;
     chan->lock.clear(::std::memory_order_release); // release lock
     *r->cc->svc_req->io_request.pdata = 
       *current->cc->svc_req->io_request.pdata; // transfer data
@@ -106,8 +111,11 @@ void sync_sched::do_write(io_request_t *req) {
   }
   else {
     if(chan->refcnt == 1) {
+::std::cout<< "do_write: deleting fibre " << current << ", channel "<< chan <<" should die next" << ::std::endl;
       delete current;
     } else {
+      --chan->refcnt;
+::std::cout<< "do_write: fibre " << current << ", set channel "<< chan <<" recnt to " << chan->refcnt << ::std::endl;
       chan->push_writer(current); // i/o fail: push current onto channel
       chan->lock.clear(::std::memory_order_release); // release lock
       current = active_set->pop(); // reset current from active list

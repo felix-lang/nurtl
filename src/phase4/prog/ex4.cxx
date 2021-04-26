@@ -12,11 +12,13 @@ struct producer : con_t {
     int value;
   };
   io_request_t w_req;
-
+  ~producer() { 
+    ::std::cout<< "producer "<<this<<" destructor" << ::std::endl; 
+  }
   con_t *call(
     con_t *caller_a, 
     ::std::list<int> *plst_a,
-    chan_epref_t outchan)
+    chan_epref_t &&outchan)
   { 
     caller = caller_a;
     plst = plst_a;
@@ -42,7 +44,7 @@ struct producer : con_t {
 ::std::cout << "Producer finished" << ::std::endl;
           auto tmp = caller; 
           delete this;
-          return caller; 
+          return tmp; 
         }
         value = *it++;
 ::std::cout << "Producer writing .. " << ::std::endl;
@@ -63,10 +65,14 @@ struct consumer: con_t {
   io_request_t r_req;
   chan_epref_t inp;
 
+  ~consumer() { 
+    ::std::cout<< "consumer "<<this<<" destructor" << ::std::endl; 
+  }
+
   con_t *call(
     con_t *caller_a, 
     ::std::list<int> *plst_a,
-    chan_epref_t inchan_a)
+    chan_epref_t &&inchan_a)
   { 
     caller = caller_a;
     plst = plst_a;
@@ -109,10 +115,14 @@ struct transducer: con_t {
   chan_epref_t inp;
   chan_epref_t out;
 
+  ~transducer() { 
+    ::std::cout<< "transducer "<<this<<" destructor" << ::std::endl; 
+  }
+
   con_t *call(
     con_t *caller_a, 
-    chan_epref_t inchan_a,
-    chan_epref_t outchan_a)
+    chan_epref_t &&inchan_a,
+    chan_epref_t &&outchan_a)
   { 
     caller = caller_a;
     inp = inchan_a;
@@ -159,6 +169,11 @@ struct init: con_t {
   chan_epref_t ch2out;
   chan_epref_t ch2inp;
 
+  ~init() {
+    ::std::cout << "init " << this << " destructor" << ::std::endl;
+    ::std::cout << "ch1out refcnt = " << ch1out.use_count() << ::std::endl;
+  }
+
   // store parameters in local variables
   con_t *call(
     con_t *caller_in,
@@ -185,7 +200,7 @@ struct init: con_t {
         ch2inp = ch2out->dup();
  
         spawn_req.svc_code = spawn_fibre_request_code_e;    
-        spawn_req.tospawn = (new producer)->call(nullptr, inlst, ch1out);
+        spawn_req.tospawn = (new producer)->call(nullptr, inlst, ::std::move(ch1out));
 ::std::cout<< "Producer initialised" << ::std::endl;
         svc_req = (svc_req_t*)&spawn_req;
         pc = 1;
@@ -195,7 +210,7 @@ struct init: con_t {
       case 1:
 ::std::cout << "init case 1" << ::std::endl;
         pc = 2;
-        spawn_req.tospawn = (new transducer)->call(nullptr, ch1inp, ch2out);
+        spawn_req.tospawn = (new transducer)->call(nullptr, ::std::move(ch1inp), ::std::move(ch2out));
         svc_req = (svc_req_t*)&spawn_req;
 ::std::cout<< "Transducer spawned" << ::std::endl;
         return this;
@@ -203,14 +218,19 @@ struct init: con_t {
       case 2:
 ::std::cout << "init case 2" << ::std::endl;
         pc = 3;
-        spawn_req.tospawn = (new consumer)->call(nullptr, outlst, ch2inp);
+        spawn_req.tospawn = (new consumer)->call(nullptr, outlst, ::std::move(ch2inp));
         svc_req = (svc_req_t*)&spawn_req;
 ::std::cout<< "Consumer spawned" << ::std::endl;
         return this;
  
       case 3: 
 ::std::cout << "init case 3" << ::std::endl;
-        return caller;
+        {
+::std::cout << "Init finished" << ::std::endl;
+          con_t *tmp = caller;
+          delete this;
+          return tmp;
+        }
 
       default: assert(false);
     } // switch
