@@ -26,7 +26,7 @@ struct channel_t {
   // push a fibre as a reader: precondition it must be a reader
   // and, if the channel is non-empty it must contain only readers
   void push_reader(fibre_t *r) { 
-    ::std::cout << "channel " << this << " push reader " << r << ::std::endl;
+    // ::std::cout << "channel " << this << " push reader " << r << ::std::endl;
     r->next = top; 
     top = r; 
   }
@@ -34,29 +34,29 @@ struct channel_t {
   // push a fibre as a writer: precondition it must be a writer
   // and, if the channel is non-empty it must contain only writers
   void push_writer(fibre_t *w) { 
-    ::std::cout << "channel " << this << " push writer " << w << ::std::endl;
+    // ::std::cout << "channel " << this << " push writer " << w << ::std::endl;
     w->next = top; 
     top = (fibre_t*)set_lowbit(w);
   }
 
   // pop a reader if there is one, otherwise nullptr
   fibre_t *pop_reader() { 
-::std::cout << "channel::pop reader" << ::std::endl;
+// ::std::cout << "channel::pop reader" << ::std::endl;
     fibre_t *tmp = top; 
-::std::cout << "pop reader " << tmp << ::std::endl;
+// ::std::cout << "pop reader " << tmp << ::std::endl;
     if(!tmp || get_lowbit(tmp))return nullptr;
-::std::cout << "found reader " << tmp << ::std::endl;
+// ::std::cout << "found reader " << tmp << ::std::endl;
     top = top -> next;
     return tmp; // lowbit is clear, its a reader 
   }
 
   // pop a writer if there is one, otherwise nullptr
   fibre_t *pop_writer() { 
-::std::cout << "channel::pop writer" << ::std::endl;
+// ::std::cout << "channel::pop writer" << ::std::endl;
     fibre_t *tmp = top; 
     if(!tmp || !get_lowbit(tmp)) return nullptr;
     tmp = (fibre_t*)clear_lowbit(tmp); // lowbit is set for writer
-::std::cout << "found writer " << tmp << ::std::endl;
+// ::std::cout << "found writer " << tmp << ::std::endl;
     top = tmp -> next;
     return tmp;
   }
@@ -82,7 +82,7 @@ struct channel_endpoint_t {
   }
 
   ~channel_endpoint_t () {
-::std::cout << "Channel endpoint " << this << " destructor" << ::std::endl; 
+// ::std::cout << "Channel endpoint " << this << " destructor" << ::std::endl; 
     switch (channel->refcnt.load()) {
       case 0: break;
       case 1: delete_channel(); break;
@@ -91,7 +91,7 @@ struct channel_endpoint_t {
   }
 
   void delete_channel() {
-::std::cout << "Delete channel " << this << ::std::endl;
+// ::std::cout << "Delete channel " << this << ::std::endl;
     fibre_t *top = channel->top;
     channel->top = nullptr;
     channel->refcnt = 0;

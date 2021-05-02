@@ -46,10 +46,8 @@ void sync_sched::sync_run() {
 
 void sync_sched::do_read(io_request_t *req) {
   channel_t *chan = req->chan;
-  while(chan->lock.test_and_set(::std::memory_order_acquire)); // spin
   fibre_t *w = chan->pop_writer();
   if(w) {
-    chan->lock.clear(::std::memory_order_release); // release lock
     *current->cc->svc_req->io_request.pdata =
       *w->cc->svc_req->io_request.pdata; // transfer data
 
@@ -62,7 +60,6 @@ void sync_sched::do_read(io_request_t *req) {
   }
   else {
     chan->push_reader(current);
-    chan->lock.clear(::std::memory_order_release); // release lock
     current = active_set->pop(); // active list
     // i/o fail: current pushed then set to next active
   }
@@ -70,10 +67,8 @@ void sync_sched::do_read(io_request_t *req) {
 
 void sync_sched::do_write(io_request_t *req) {
   channel_t *chan = req->chan;
-  while(chan->lock.test_and_set(::std::memory_order_acquire)); // spin
   fibre_t *r = req->chan->pop_reader();
   if(r) {
-    chan->lock.clear(::std::memory_order_release); // release lock
     *r->cc->svc_req->io_request.pdata = 
       *current->cc->svc_req->io_request.pdata; // transfer data
 
@@ -92,7 +87,6 @@ void sync_sched::do_write(io_request_t *req) {
   }
   else {
     chan->push_writer(current); // i/o fail: push current onto channel
-    chan->lock.clear(::std::memory_order_release); // release lock
     current = active_set->pop(); // reset current from active list
   }
 }

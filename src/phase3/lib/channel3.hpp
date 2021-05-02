@@ -14,9 +14,8 @@ inline static void *set_lowbit(void *p) {
 // channel
 struct channel_t {
   fibre_t *top;
-  ::std::atomic_flag lock;
   
-  channel_t () : top (nullptr), lock(false) {}
+  channel_t () : top (nullptr) {}
 
   // destructor deletes all continuations left in channel
   ~channel_t() {

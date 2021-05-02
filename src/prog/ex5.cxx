@@ -1,7 +1,7 @@
 #include <iostream>
 #include <cassert>
 // TEST CASE
-#include "sync4.hpp"
+#include "sync5.hpp"
 #include <list>
 struct producer : con_t {
   ::std::list<int> *plst;
@@ -13,7 +13,7 @@ struct producer : con_t {
   };
   io_request_t w_req;
   ~producer() { 
-    ::std::cout<< "producer "<<this<<" destructor" << ::std::endl; 
+    // ::std::cout<< "producer "<<this<<" destructor" << ::std::endl; 
   }
   con_t *call(
     con_t *caller_a, 
@@ -23,14 +23,19 @@ struct producer : con_t {
     caller = caller_a;
     plst = plst_a;
     pc = 0;
+// ::std::cout << "channel out refcount before move assignment to variable " << out.use_count() << ::std::endl;
+// ::std::cout << "channel parameter refcount before move assignment to variable " << outchan.use_count() << ::std::endl;
+    //out = ::std::move(outchan);
     out = outchan;
+// ::std::cout << "channel out refcount after move assignment to variable " << out.use_count() << ::std::endl;
+// ::std::cout << "channel parameter refcount after move assignment to variable " << outchan.use_count() << ::std::endl;
     return this;
   }
 
   con_t *resume() override {
     switch (pc) {
       case 0:
-::std::cout << "Producer case 0" << ::std::endl;
+// ::std::cout << "Producer case 0" << ::std::endl;
         it = plst->begin();
         pc = 1;
         w_req.svc_code = write_request_code_e;
@@ -39,17 +44,17 @@ struct producer : con_t {
         return this;
 
       case 1:
-::std::cout << "Producer case 1" << ::std::endl;
+// ::std::cout << "Producer case 1" << ::std::endl;
         if(it == plst->end()) { 
-::std::cout << "Producer finished" << ::std::endl;
+// ::std::cout << "Producer finished" << ::std::endl;
           auto tmp = caller; 
           delete this;
           return tmp; 
         }
         value = *it++;
-::std::cout << "Producer writing .. " << ::std::endl;
+// ::std::cout << "Producer writing .. " << ::std::endl;
         svc_req = (svc_req_t*)(void*)&w_req; // service request
-::std::cout << "Producer write complete.. " << ::std::endl;
+// ::std::cout << "Producer write complete.. " << ::std::endl;
         return this;
       default: assert(false);
     }
@@ -66,7 +71,7 @@ struct consumer: con_t {
   chan_epref_t inp;
 
   ~consumer() { 
-    ::std::cout<< "consumer "<<this<<" destructor" << ::std::endl; 
+    // ::std::cout<< "consumer "<<this<<" destructor" << ::std::endl; 
   }
 
   con_t *call(
@@ -84,7 +89,7 @@ struct consumer: con_t {
   con_t *resume() override {
     switch (pc) {
       case 0:
-::std::cout << "Consumer case 0" << ::std::endl;
+// ::std::cout << "Consumer case 0" << ::std::endl;
         pc = 1;
         r_req.svc_code = read_request_code_e;
         r_req.pdata = &iodata;
@@ -116,7 +121,7 @@ struct transducer: con_t {
   chan_epref_t out;
 
   ~transducer() { 
-    ::std::cout<< "transducer "<<this<<" destructor" << ::std::endl; 
+    // ::std::cout<< "transducer "<<this<<" destructor" << ::std::endl; 
   }
 
   con_t *call(
@@ -134,7 +139,7 @@ struct transducer: con_t {
   con_t *resume() override {
     switch (pc) {
       case 0:
-::std::cout << "Transducer case 0" << ::std::endl;
+// ::std::cout << "Transducer case 0" << ::std::endl;
         pc = 1;
         r_req.svc_code = read_request_code_e;
         r_req.pdata = &iodata;
@@ -170,8 +175,8 @@ struct init: con_t {
   chan_epref_t ch2inp;
 
   ~init() {
-    ::std::cout << "init " << this << " destructor" << ::std::endl;
-    ::std::cout << "ch1out refcnt = " << ch1out.use_count() << ::std::endl;
+    // ::std::cout << "init " << this << " destructor" << ::std::endl;
+    // ::std::cout << "ch1out refcnt = " << ch1out.use_count() << ::std::endl;
   }
 
   // store parameters in local variables
@@ -193,40 +198,45 @@ struct init: con_t {
     switch (pc) 
     {
       case 0:
-::std::cout << "init case 0" << ::std::endl;
+// ::std::cout << "init case 0" << ::std::endl;
         ch1out = make_channel();
+    // ::std::cout << "After construction ch1out refcnt = " << ch1out.use_count() << ::std::endl;
         ch1inp = ch1out->dup(); 
+    // ::std::cout << "After dup ch1out refcnt = " << ch1out.use_count() << ::std::endl;
         ch2out = make_channel();
         ch2inp = ch2out->dup();
  
         spawn_req.svc_code = spawn_fibre_request_code_e;    
         spawn_req.tospawn = (new producer)->call(nullptr, inlst, ::std::move(ch1out));
-::std::cout<< "Producer initialised" << ::std::endl;
+    // ::std::cout << "After move to producer fibre ch1out refcnt = " << ch1out.use_count() << ::std::endl;
+    // ::std::cout << "After move to producer fibre ch1out pointer is = " << ch1out.get() << ::std::endl;
+// ::std::cout<< "Producer initialised" << ::std::endl;
         svc_req = (svc_req_t*)&spawn_req;
         pc = 1;
-::std::cout<< "Producer spawned" << ::std::endl;
+// ::std::cout<< "Producer spawned" << ::std::endl;
         return this;
  
       case 1:
-::std::cout << "init case 1" << ::std::endl;
+// ::std::cout << "init case 1" << ::std::endl;
         pc = 2;
         spawn_req.tospawn = (new transducer)->call(nullptr, ::std::move(ch1inp), ::std::move(ch2out));
+    // ::std::cout << "After move ch1out refcnt = " << ch1out.use_count() << ::std::endl;
         svc_req = (svc_req_t*)&spawn_req;
-::std::cout<< "Transducer spawned" << ::std::endl;
+// ::std::cout<< "Transducer spawned" << ::std::endl;
         return this;
  
       case 2:
-::std::cout << "init case 2" << ::std::endl;
+// ::std::cout << "init case 2" << ::std::endl;
         pc = 3;
         spawn_req.tospawn = (new consumer)->call(nullptr, outlst, ::std::move(ch2inp));
         svc_req = (svc_req_t*)&spawn_req;
-::std::cout<< "Consumer spawned" << ::std::endl;
+// ::std::cout<< "Consumer spawned" << ::std::endl;
         return this;
  
       case 3: 
-::std::cout << "init case 3" << ::std::endl;
+// ::std::cout << "init case 3" << ::std::endl;
         {
-::std::cout << "Init finished" << ::std::endl;
+// ::std::cout << "Init finished" << ::std::endl;
           con_t *tmp = caller;
           delete this;
           return tmp;
@@ -255,7 +265,7 @@ int main() {
   sched.sync_run(pinit);
 
   // the result is now in the outlist so print it
-  ::std::cout<< "List of squares:" << ::std::endl;
+  // ::std::cout<< "List of squares:" << ::std::endl;
   for(auto v : outlst) ::std::cout << v << ::std::endl;
 } 
 
