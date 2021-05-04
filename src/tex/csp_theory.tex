@@ -103,7 +103,7 @@ be deleted by borrowers.
 Note the immutability constraint can be lifted if that is the
 intention but then referential transparency is lost.
 
-\subsetion{Returning closures}
+\subsection{Returning closures}
 When a nested function is returned, it must accept ownership
 of the function which returns it. The returning function
 now must not delete itself on return as that would destroy

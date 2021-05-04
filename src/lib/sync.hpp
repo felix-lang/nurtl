@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <atomic>
 #include <memory>
+#include <thread>
 
 #include "con.hpp"
 #include "fibre.hpp"

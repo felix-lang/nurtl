@@ -3,6 +3,18 @@
 // TEST CASE
 #include "sync.hpp"
 #include <list>
+
+struct hello : con_t {
+  CSP_CALLDEF_START
+  CSP_CALLDEF_MID
+  CSP_CALLDEF_END
+  CSP_RESUME_START
+    ::std::cout << "Hello World" << ::std::endl;
+    CSP_RETURN
+  CSP_RESUME_END
+};
+
+
 struct producer : con_t {
   ::std::list<int> *plst;
   ::std::list<int>::iterator it;
@@ -200,7 +212,14 @@ struct init: con_t {
     return this;
  
   case 3:
+    pc = 4;
+    spawn_req.tospawn = (new hello)->call(nullptr);
+    svc_req = (svc_req_t*)&spawn_req;
+    return this;
+
+  case 4:
     CSP_RETURN 
+
 
   CSP_RESUME_END
 }; // init class

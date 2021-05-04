@@ -13,6 +13,7 @@ struct sync_sched {
   void do_write(io_request_t *req);
   void do_spawn_fibre(spawn_fibre_request_t *req);
   void do_spawn_fibre_deferred(spawn_fibre_request_t *req);
+  void do_spawn_pthread(spawn_fibre_request_t *req);
 };
 
 // scheduler subroutine runs until there is no work to do
@@ -20,6 +21,7 @@ void sync_sched::sync_run(con_t *cc) {
   current = new fibre_t(cc, active_set);
   while(current) // while there's work to do 
   {
+    current->cc->svc_req = nullptr; // null out service request
     svc_req_t *svc_req = current->run_fibre();
     if(svc_req)  // fibre issued service request
       switch (svc_req->get_code()) 
@@ -28,7 +30,6 @@ void sync_sched::sync_run(con_t *cc) {
           do_read(&(svc_req->io_request));
           break;
         case write_request_code_e:  
-// ::std::cout << "sync_sched::sync_run case write_request" << ::std::endl;
           do_write(&(svc_req->io_request));
           break;
         case spawn_fibre_request_code_e:  
@@ -36,6 +37,9 @@ void sync_sched::sync_run(con_t *cc) {
           break;
         case spawn_fibre_deferred_request_code_e:  
           do_spawn_fibre_deferred(&(svc_req->spawn_fibre_request));
+          break;
+        case spawn_pthread_request_code_e:  
+          do_spawn_pthread(&(svc_req->spawn_fibre_request));
       }
     else // the fibre returned without issuing a request so should be dead
     {
@@ -138,11 +142,17 @@ void sync_sched::do_spawn_fibre(spawn_fibre_request_t *req) {
 void sync_sched::do_spawn_fibre_deferred(spawn_fibre_request_t *req) {
 // ::std::cout << "do spawn deferred" << ::std::endl;
   current->cc->svc_req=nullptr;
-  fibre_t *d = new fibre_t(req->tospawn, active_set) 
+  fibre_t *d = new fibre_t(req->tospawn, active_set);
   active_set->push(d);
 // ::std::cout << "spawn deferred " << d << ::std::endl;
 }
 
+static void spawn(active_set_t *pa, con_t *cc) {
+  sync_sched(pa).sync_run(cc);
+}
 
+void sync_sched::do_spawn_pthread(spawn_fibre_request_t *req) {
+  ::std::thread(spawn,new active_set_t,req->tospawn).detach();
+}
 
 
