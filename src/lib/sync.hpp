@@ -38,4 +38,25 @@
   default: assert(false);\
   }}
 
+#define CSP_CALL_DIRECT0(case_label,procedure)\
+  pc=case_label;\
+  return new procedure->call(this);\
+  case case_label:;
+
+#define CSP_CALL_DIRECT1(case_label,procedure,arg)\
+  pc=case_label;\
+  return new procedure->call(this,arg);\
+  case case_label:;
+
+#define CSP_CALL_DIRECT2(case_label,procedure,arg1,arg2)\
+  pc=case_label;\
+  return new procedure->call(this,arg1,arg2);\
+  case case_label:;
+
+
+#define CSP_CALL_DIRECT3(case_label,procedure,arg1,arg2,arg3)\
+  pc=case_label;\
+  return new procedure->call(this,arg1,arg2,arg3);\
+  case case_label:;
+
 

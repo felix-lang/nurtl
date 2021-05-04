@@ -12,6 +12,7 @@ struct sync_sched {
   void do_read(io_request_t *req);
   void do_write(io_request_t *req);
   void do_spawn_fibre(spawn_fibre_request_t *req);
+  void do_spawn_fibre_deferred(spawn_fibre_request_t *req);
 };
 
 // scheduler subroutine runs until there is no work to do
@@ -33,6 +34,8 @@ void sync_sched::sync_run(con_t *cc) {
         case spawn_fibre_request_code_e:  
           do_spawn_fibre(&(svc_req->spawn_fibre_request));
           break;
+        case spawn_fibre_deferred_request_code_e:  
+          do_spawn_fibre_deferred(&(svc_req->spawn_fibre_request));
       }
     else // the fibre returned without issuing a request so should be dead
     {
@@ -131,6 +134,15 @@ void sync_sched::do_spawn_fibre(spawn_fibre_request_t *req) {
   current = new fibre_t(req->tospawn, active_set);
 // ::std::cout << "spawned " << current << ::std::endl;
 }
+
+void sync_sched::do_spawn_fibre_deferred(spawn_fibre_request_t *req) {
+// ::std::cout << "do spawn deferred" << ::std::endl;
+  current->cc->svc_req=nullptr;
+  fibre_t *d = new fibre_t(req->tospawn, active_set) 
+  active_set->push(d);
+// ::std::cout << "spawn deferred " << d << ::std::endl;
+}
+
 
 
 
