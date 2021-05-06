@@ -42,12 +42,12 @@
 
 #define SVC_READ_REQ(xpreq,xpchan,xpdata)\
   (xpreq)->svc_code = read_request_code_e;\
-  (xpreq)->pdata = xpdata;\
+  (xpreq)->pdata = (void**)xpdata;\
   (xpreq)->chan = xpchan;
 
 #define SVC_WRITE_REQ(xpreq,xpchan,xpdata)\
   (xpreq)->svc_code = write_request_code_e;\
-  (xpreq)->pdata = xpdata;\
+  (xpreq)->pdata = (void**)xpdata;\
   (xpreq)->chan = xpchan;
 
 #define SVC_SPAWN_FIBRE_REQ(xpreq,xcont)\
