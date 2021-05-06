@@ -32,32 +32,57 @@
 
 #define CSP_RESUME_START\
   con_t *resume() override {\
-  switch(pc){\
+  switch(pc++){\
   case 0:
 
 #define CSP_RESUME_END\
   default: assert(false);\
   }}
 
-#define CSP_CALL_DIRECT0(case_label,procedure)\
-  pc=case_label;\
-  return new procedure->call(this);\
-  case case_label:;
 
-#define CSP_CALL_DIRECT1(case_label,procedure,arg)\
-  pc=case_label;\
-  return new procedure->call(this,arg);\
-  case case_label:;
+#define SVC_READ_REQ(xpreq,xpchan,xpdata)\
+  (xpreq)->svc_code = read_request_code_e;\
+  (xpreq)->pdata = xpdata;\
+  (xpreq)->chan = xpchan;
 
-#define CSP_CALL_DIRECT2(case_label,procedure,arg1,arg2)\
-  pc=case_label;\
-  return new procedure->call(this,arg1,arg2);\
-  case case_label:;
+#define SVC_WRITE_REQ(xpreq,xpchan,xpdata)\
+  (xpreq)->svc_code = write_request_code_e;\
+  (xpreq)->pdata = xpdata;\
+  (xpreq)->chan = xpchan;
+
+#define SVC_SPAWN_FIBRE_REQ(xpreq,xcont)\
+  (xpreq)->svc_code = spawn_fibre_request_code_e;\
+  (xpreq)->tospawn = xcont;
+
+#define SVC_SPAWN_FIBRE_DEFERRED_REQ(xpreq,xcont)\
+  (xpreq)->svc_code = spawn_fibre_deferred_request_code_e;\
+  (xpreq)->tospawn = xcont;
+
+#define SVC_SPAWN_PTHREAD_REQ(xprec,xcont)\
+  (xpreq)->spawn_pthread_request_code_e;\
+  (xpreq)->tospawn = xcont;
 
 
-#define CSP_CALL_DIRECT3(case_label,procedure,arg1,arg2,arg3)\
-  pc=case_label;\
-  return new procedure->call(this,arg1,arg2,arg3);\
-  case case_label:;
+
+#define SVC(preq)\
+  svc_req = (svc_req_t*)(void*)preq;\
+  return this;
+
+#define CSP_GOTO(caseno)\
+  pc = caseno;\
+  return this;
+
+#define CSP_CALL_DIRECT0(procedure)\
+  return (new procedure)->call(this);
+
+#define CSP_CALL_DIRECT1(procedure,arg)\
+  return (new procedure)->call(this,arg);
+
+#define CSP_CALL_DIRECT2(procedure,arg1,arg2)\
+  return (new procedure)->call(this,arg1,arg2);
+
+
+#define CSP_CALL_DIRECT3(procedure,arg1,arg2,arg3)\
+  return (new procedure)->call(this,arg1,arg2,arg3);
 
 

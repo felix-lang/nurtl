@@ -16,6 +16,10 @@ struct sync_sched {
   void do_spawn_pthread(spawn_fibre_request_t *req);
 };
 
+extern void csp_run(con_t *init) {
+  sync_sched (new active_set_t).sync_run(init);
+}
+
 // scheduler subroutine runs until there is no work to do
 void sync_sched::sync_run(con_t *cc) {
   current = new fibre_t(cc, active_set);
@@ -150,7 +154,6 @@ void sync_sched::do_spawn_fibre_deferred(spawn_fibre_request_t *req) {
 static void spawn(active_set_t *pa, con_t *cc) {
   sync_sched(pa).sync_run(cc);
 }
-
 void sync_sched::do_spawn_pthread(spawn_fibre_request_t *req) {
   ::std::thread(spawn,new active_set_t,req->tospawn).detach();
 }

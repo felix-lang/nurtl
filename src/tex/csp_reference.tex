@@ -15,11 +15,125 @@
 \hypersetup{pdftex,colorlinks=true,allcolors=blue}
 \usepackage{hypcap}
 
-\title{Communicating Sequential Processes\\ in C++}
+\title{Communicating Sequential Processes\\ in C++ \\ Reference}
 \author{John Skaller}
 \begin{document}
 \maketitle
 \tableofcontents
-\chapter{CSP model}
+\chapter{Global Rules}
+The correct operation of the CSP system requires adherence to a set
+of global rules and the programmer following, by discipline,
+various protocols documented herein.
+
+\subsection{No global data}
+Use of global variables is prohibited.
+
+\subsection{No system calls}
+Calls to the operating system, whether directly or using
+the C or C++ Standard libraries, are prohibited.
+
+This means use of \verb%malloc%, file I/O, and system 
+delays is prohibited. These services are provided instead
+as part of the run time API. These operations can be used
+with care is system extensions.
+
+\subsection{Only transient use of machine stack}
+The machine stack can only be used transiently.
+The stack is defined as empty on entry to both \verb%resume% and
+\verb%call% methods and must be empty when these method return
+control. The \verb%resume% method of a continuation returns control
+to perform a service call so any automatic variables on the machine
+stack are lost. Conversely, during transient use of the machine
+stack whilst evaluation expressions of blocks, service calls cannot
+be performed without losing automatic variables.
+
+The sole exception to this rule is that a new scheduler can be created
+and run anywhere: the scheduler \verb%sync_run% method is a normal
+C++ function calling which creates an independent nested csp system
+which returns control only when all work is complete and the scheduler
+terminates.
+
+\chapter{Continuation Objects}
+A CSP continuation is a pointer to an object which an instance 
+of a class derived from the class %con_t%.
+
+\begin{minted}{c++}
+// continuation
+struct con_t {
+  con_t *caller; // caller continuation
+  int pc;        // program counter
+  union svc_req_t *svc_req; // request
+  virtual con_t *resume()=0;
+  virtual ~con_t(){}
+};
+\end{minted}
+
+The derived class must have a method with the following signature:
+
+\begin{minted}{c++}
+con_t *call(con_t *caller_a, ...);
+\end{minted}
+
+where the ellipsis represents any other arguments the user wants.
+
+The \verb%caller_a% parameter must hold the \verb%this% pointer of
+the continuation to be invoked after this continuation is completed,
+if any, or \verb%nullptr% if completion terminates the fibre owning
+the continuation.
+
+The call method must initialise the \verb%pc% non-static member
+variable to 0, and set the \verb%caller% variable to the parameter
+\verb%caller_a%. It should also assign a suitable initial value
+to all user supplied non-static member variables of the derived class,
+except the display variables which are initialised by the constructor.
+
+Non-static member variables added to the class must have default
+initialisers.
+
+\section{Display}
+A sequence of pointers may be passed to the \verb%constructor% routine after
+which are pointers to the global object,
+the most recent continuation object of the outermost ancestor, through
+to the parent, in that order, and used to initialise non-static member
+variables. This sequence is called the display.
+
+The decision as to what the static nesting structure of the user 
+program code is must be made by the user and must follow a consistent
+pattern throughout the program in which containment forms a tree structure,
+starting with the global object, and then a branch for each top level
+procedure, then for each such branch its children.
+
+Standard scoping rule them dictate that direct calls made from
+a procedure may only be to its ancestors (including itself) or their
+siblings.
+
+Display pointer may not be modified.
+
+Display pointers can be optimised away if they are not used.
+The pointers may be pointers to const or non-const, however the pointers
+themselves should be const to ensure the context of a continuation
+is invariant (even if the content of the context is not). 
+
+\section{Continuation State}
+After construction, a continuation forms a closure over the context
+specified by the display and is said to be in a {\em callable} state.
+After the \verb%call% method is executed and prior to returning, it is said
+to be in a {\em resumable} state. After returning, it is said
+to be in a {\em dead} state.
+
+A continuation can only be resumed if it is in a resumable state.
+A continuation can be called if it is either dead or callable
+and then becomes resumable. Care should be taken not to call
+a dead continuation which is part of the closure context of
+another continuation unless it is by design.
+
+
+\section{Initialisation}
+A CSP system is constructed by calling \verb%csp_run% with a resumable continuation
+like this:
+\begin{minted}{c++}
+csp_run((new init)-> call(nullptr, &inlst, &outlst));
+\end{minted}
+
 \end{document}
 

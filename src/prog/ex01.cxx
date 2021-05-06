@@ -24,9 +24,7 @@ struct producer : con_t {
     int value;
   };
   io_request_t w_req;
-  ~producer() { 
-    // ::std::cout<< "producer "<<this<<" destructor" << ::std::endl; 
-  }
+  ~producer() { }
 
   CSP_CALLDEF_START,
     ::std::list<int> *plst_a,
@@ -37,25 +35,17 @@ struct producer : con_t {
   CSP_CALLDEF_END
 
   CSP_RESUME_START
-    // ::std::cout << "Producer case 0" << ::std::endl;
     it = plst->begin();
-    pc = 1;
-    w_req.svc_code = write_request_code_e;
-    w_req.pdata = &iodata;
-    w_req.chan = &out;
-    return this;
+    SVC_WRITE_REQ(&w_req,&out,&iodata);
 
   case 1:
-    // ::std::cout << "Producer case 1" << ::std::endl;
     if(it == plst->end()) { 
-      // ::std::cout << "Producer finished" << ::std::endl;
       CSP_RETURN
     }
     value = *it++;
-    // ::std::cout << "Producer writing .. " << ::std::endl;
-    svc_req = (svc_req_t*)(void*)&w_req; // service request
-    // ::std::cout << "Producer write complete.. " << ::std::endl;
-    return this;
+    pc = 1;
+    SVC(&w_req)
+
   CSP_RESUME_END
 };
 
@@ -68,9 +58,7 @@ struct consumer: con_t {
   io_request_t r_req;
   chan_epref_t inp;
 
-  ~consumer() { 
-    // ::std::cout<< "consumer "<<this<<" destructor" << ::std::endl; 
-  }
+  ~consumer() {}
 
   CSP_CALLDEF_START,
     ::std::list<int> *plst_a,
@@ -81,24 +69,36 @@ struct consumer: con_t {
   CSP_CALLDEF_END
 
   CSP_RESUME_START  
-    // ::std::cout << "Consumer case 0" << ::std::endl;
-    pc = 1;
-    r_req.svc_code = read_request_code_e;
-    r_req.pdata = &iodata;
-    r_req.chan = &inp;
-    return this;
+    SVC_READ_REQ(&r_req,&inp,&iodata)
 
   case 1:
-    svc_req = (svc_req_t*)(void*)&r_req; // service request
-    pc = 2;
-    return this;
+    SVC(&r_req)
 
   case 2:
     plst->push_back(value);
-    pc = 1;
-    return this;
+    CSP_GOTO(1)
+
   CSP_RESUME_END
 };
+
+struct square : con_t {
+  int inp;
+  int *pout;
+ 
+  CSP_CALLDEF_START,
+    int *pout_a,
+    int inp_a
+  CSP_CALLDEF_MID
+    pout = pout_a;
+    inp = inp_a;
+  CSP_CALLDEF_END
+
+  CSP_RESUME_START
+    *pout = inp * inp;
+    CSP_RETURN
+  CSP_RESUME_END
+};
+
 
 struct transducer: con_t {
   union {
@@ -110,9 +110,7 @@ struct transducer: con_t {
   chan_epref_t inp;
   chan_epref_t out;
 
-  ~transducer() { 
-    // ::std::cout<< "transducer "<<this<<" destructor" << ::std::endl; 
-  }
+  ~transducer() {}
 
   CSP_CALLDEF_START,
     chan_epref_t inchan_a,
@@ -123,26 +121,18 @@ struct transducer: con_t {
   CSP_CALLDEF_END
   
   CSP_RESUME_START
-    // ::std::cout << "Transducer case 0" << ::std::endl;
-    pc = 1;
-    r_req.svc_code = read_request_code_e;
-    r_req.pdata = &iodata;
-    r_req.chan = &inp;
-    w_req.svc_code = write_request_code_e;
-    w_req.pdata = &iodata;
-    w_req.chan = &out;
-    return this;
+    SVC_READ_REQ(&r_req,&inp,&iodata)
+    SVC_WRITE_REQ(&w_req,&out,&iodata)
 
   case 1:
-    svc_req = (svc_req_t*)(void*)&r_req; // service request
-    pc = 2;
-    return this;
+    SVC(&r_req)
 
   case 2:
-    value = value * value; // square value
-    svc_req = (svc_req_t*)(void*)&w_req; // service request
+    CSP_CALL_DIRECT2(square,&value,value)
+
+  case 3:
     pc = 1;
-    return this;
+    SVC(&w_req)
 
   CSP_RESUME_END
 };
@@ -157,10 +147,7 @@ struct init: con_t {
   chan_epref_t ch2out;
   chan_epref_t ch2inp;
 
-  ~init() {
-    // ::std::cout << "init " << this << " destructor" << ::std::endl;
-    // ::std::cout << "ch1out refcnt = " << ch1out.use_count() << ::std::endl;
-  }
+  ~init() {}
 
   // store parameters in local variables
   CSP_CALLDEF_START,
@@ -172,50 +159,25 @@ struct init: con_t {
   CSP_CALLDEF_END
 
   CSP_RESUME_START
-    // ::std::cout << "init case 0" << ::std::endl;
-   ch1out = make_channel();
-    // ::std::cout << "After construction ch1out refcnt = " << ch1out.use_count() << ::std::endl;
+    ch1out = make_channel();
     ch1inp = ch1out->dup(); 
-    // ::std::cout << "After dup ch1out refcnt = " << ch1out.use_count() << ::std::endl;
     ch2out = make_channel();
     ch2inp = ch2out->dup();
  
-    spawn_req.svc_code = spawn_fibre_request_code_e;    
-    spawn_req.tospawn = (new producer)->call(nullptr, inlst, ch1out);
-    ch1out.reset();
-    // ::std::cout << "After move to producer fibre ch1out refcnt = " << ch1out.use_count() << ::std::endl;
-    // ::std::cout << "After move to producer fibre ch1out pointer is = " << ch1out.get() << ::std::endl;
-    // ::std::cout<< "Producer initialised" << ::std::endl;
-    svc_req = (svc_req_t*)&spawn_req;
-    pc = 1;
-    // ::std::cout<< "Producer spawned" << ::std::endl;
-    return this;
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new producer)->call(nullptr, inlst, ch1out))
+    SVC(&spawn_req)
  
   case 1:
-    // ::std::cout << "init case 1" << ::std::endl;
-    pc = 2;
-    spawn_req.tospawn = (new transducer)->call(nullptr, ch1inp, ch2out);
-    ch1inp.reset();
-    ch2out.reset();
-    // ::std::cout << "After move ch1out refcnt = " << ch1out.use_count() << ::std::endl;
-    svc_req = (svc_req_t*)&spawn_req;
-    // ::std::cout<< "Transducer spawned" << ::std::endl;
-    return this;
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new transducer)->call(nullptr, ch1inp, ch2out))
+    SVC(&spawn_req)
  
   case 2:
-    // ::std::cout << "init case 2" << ::std::endl;
-    pc = 3;
-    spawn_req.tospawn = (new consumer)->call(nullptr, outlst,ch2inp);
-    ch2inp.reset();
-    svc_req = (svc_req_t*)&spawn_req;
-    // ::std::cout<< "Consumer spawned" << ::std::endl;
-    return this;
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new consumer)->call(nullptr, outlst,ch2inp))
+    SVC(&spawn_req)
  
   case 3:
-    pc = 4;
-    spawn_req.tospawn = (new hello)->call(nullptr);
-    svc_req = (svc_req_t*)&spawn_req;
-    return this;
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new hello)->call(nullptr))
+    SVC(&spawn_req)
 
   case 4:
     CSP_RETURN 
@@ -234,12 +196,7 @@ int main() {
   // empty output list
   ::std::list<int> outlst;
 
-  init *pinit = new init;
-  pinit->call(nullptr, &inlst, &outlst);
-
-  // create scheduler and run program
-  sync_sched sched(new active_set_t);
-  sched.sync_run(pinit);
+  csp_run((new init)-> call(nullptr, &inlst, &outlst));
 
   // the result is now in the outlist so print it
   // ::std::cout<< "List of squares:" << ::std::endl;

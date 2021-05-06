@@ -1,4 +1,3 @@
-// con3.hpp
 // continuation
 struct con_t {
   con_t *caller; // caller continuation
