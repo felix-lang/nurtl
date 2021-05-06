@@ -62,8 +62,6 @@
   (xpreq)->spawn_pthread_request_code_e;\
   (xpreq)->tospawn = xcont;
 
-
-
 #define SVC(preq)\
   svc_req = (svc_req_t*)(void*)preq;\
   return this;
