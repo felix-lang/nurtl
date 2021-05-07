@@ -1,3 +1,9 @@
+  //
+  // if there are several schedulers we must keep all of them alive
+  // looping through the delay if neccessary, until
+  // (A) ALL schedulers have no current work
+  // (B) the active set is empty
+  // (C) the async count is zero
 struct pqreq_t {
   double alarm_time;
   fibre_t *fibre;
@@ -29,14 +35,17 @@ struct csp_clock_t {
   }
 
   csp_clock_t () : run(false) { chanepr = make_channel(); start(); }
-  ~csp_clock_t() { ::std::cerr << "Clock destructor" << ::std::endl; stop(); }
+  ~csp_clock_t() { 
+    // ::std::cerr << "Clock destructor" << ::std::endl; 
+    stop(); 
+  }
 
   chan_epref_t connect() { return chanepr->dup(); }
 
 private:
   // puts f back on its active set after timeout
   void activate_fibre(fibre_t *f) {
-    ::std::cerr << "Wake fibre" << ::std::endl;
+    //::std::cerr << "Wake fibre" << ::std::endl;
     f->owner->push(f);
     f->owner->async_count--;
   }
@@ -47,7 +56,7 @@ public:
   void service() {
     //::std::cerr << ::std::fixed << "Clock service started run flag = " << run << ::std::endl;
     while(run) {
-      ::std::cerr << "Clock service iteration" << ::std::endl;
+      //::std::cerr << "Clock service iteration" << ::std::endl;
 
       // step 2, read any requests
       channel_t *chan = chanepr->channel;
@@ -78,16 +87,16 @@ public:
         pqreq_t top = q.top();
         if(top.alarm_time > t) { 
            sleep_until = top.alarm_time; 
-           ::std::cerr << "UNEXPRIRED TIMER" << ::std::endl;
+           //::std::cerr << "UNEXPRIRED TIMER" << ::std::endl;
            break; 
         }
         q.pop();
-        ::std::cerr << "EXPRIRED TIMER for fibre " << top.fibre << ::std::endl;
+        //::std::cerr << "EXPRIRED TIMER for fibre " << top.fibre << ::std::endl;
         activate_fibre(top.fibre);
       }
 
       // sleep
-      ::std::cerr << "Sleep until " << sleep_until << ", for " << sleep_until - now() << ::std::endl;
+      //::std::cerr << "Sleep until " << sleep_until << ", for " << sleep_until - now() << ::std::endl;
       {
         ::std::unique_lock lk(lock); // lock mutex
         auto t = ::std::chrono::time_point<
@@ -98,20 +107,20 @@ public:
         cv.wait_until(lk, t);
         // mutex is lock on exit from wait but then released by RAII
        }
-       ::std::cerr << "Condition variable woke up" << ::std::endl;
+       //::std::cerr << "Condition variable woke up" << ::std::endl;
     } // infinite loop
   } // service
    
   void start() {
-    ::std::cerr << "Start clock, flag = " << run << ::std::endl;
+    //::std::cerr << "Start clock, flag = " << run << ::std::endl;
     if(run) return; // already running
     run = true;
-    ::std::cerr << "spawning thread, flag = " << run << ::std::endl;
+    //::std::cerr << "spawning thread, flag = " << run << ::std::endl;
     thread = ::std::thread(run_service, this); // start thread
-    ::std::cerr << "thread spawned, flag = " << run << ::std::endl;
+    //::std::cerr << "thread spawned, flag = " << run << ::std::endl;
   }
   void stop () {
-    ::std::cerr << "Stop clock flag = " << run << ::std::endl;
+    //::std::cerr << "Stop clock flag = " << run << ::std::endl;
     if(run) {
       run = false;
       thread.join();

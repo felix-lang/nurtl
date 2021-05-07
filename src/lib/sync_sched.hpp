@@ -63,8 +63,23 @@ retry:
     current = active_set->pop();      // get more work
     goto retry;
   }
+
+  // POSSIBLE RACE!
   current = active_set->pop();
   if (current) goto retry;
+
+  // NO RACE ARGUMENT: the active set is pushed by the async op BEFORE
+  // the counter is decremented. So if the counter is zero AND THEN
+  // there is still nothing in the active set, there is no work left.
+  //
+  // this is correct for a SINGLE threaded active_set.
+  //
+  // if there are several schedulers we must keep all of them alive
+  // looping through the delay if neccessary, until
+  // (A) ALL schedulers have no current work
+  // (B) the active set is empty
+  // (C) the async count is zero
+
   ::std::cerr << "Scheduler out of work, returning" << ::std::endl;
 }
 
