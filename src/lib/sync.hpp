@@ -8,6 +8,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <queue>
+#include <iostream>
 
 #include "con.hpp"
 #include "fibre.hpp"
