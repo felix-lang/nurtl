@@ -11,6 +11,7 @@ struct sync_sched {
   void sync_run(con_t *);
   void do_read(io_request_t *req);
   void do_write(io_request_t *req);
+  void do_async_write(io_request_t *req);
   void do_spawn_fibre(spawn_fibre_request_t *req);
   void do_spawn_fibre_deferred(spawn_fibre_request_t *req);
   void do_spawn_pthread(spawn_fibre_request_t *req);
@@ -23,6 +24,7 @@ extern void csp_run(con_t *init) {
 // scheduler subroutine runs until there is no work to do
 void sync_sched::sync_run(con_t *cc) {
   current = new fibre_t(cc, active_set);
+retry:
   while(current) // while there's work to do 
   {
     current->cc->svc_req = nullptr; // null out service request
@@ -35,6 +37,9 @@ void sync_sched::sync_run(con_t *cc) {
           break;
         case write_request_code_e:  
           do_write(&(svc_req->io_request));
+          break;
+        case async_write_request_code_e:  
+          do_async_write(&(svc_req->io_request));
           break;
         case spawn_fibre_request_code_e:  
           do_spawn_fibre(&(svc_req->spawn_fibre_request));
@@ -51,6 +56,13 @@ void sync_sched::sync_run(con_t *cc) {
       delete current;       // delete dead fibre
       current = active_set->pop();      // get more work
     }
+  }
+  if(active_set->async_count.load() > 0) {
+    // temporary hack! Poll for new work after short sleep
+    // replace with signalable condition variable later
+    ::std::this_thread::sleep_for(::std::chrono::milliseconds(10));
+    //::std::cerr << "Scheduler polling async count " << ::std::endl;
+    goto retry;
   }
 }
 
@@ -92,6 +104,11 @@ void sync_sched::do_read(io_request_t *req) {
     current = active_set->pop(); // active list
     // i/o fail: current pushed then set to next active
   }
+}
+
+void sync_sched::do_async_write(io_request_t *req) {
+  ++current->owner->async_count;
+  do_write(req);
 }
 
 void sync_sched::do_write(io_request_t *req) {

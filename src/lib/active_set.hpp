@@ -1,9 +1,10 @@
 // active set
 struct active_set_t {
+  ::std::atomic_size_t async_count;
   ::std::atomic_size_t refcnt;
   fibre_t *active;
   ::std::atomic_flag lock;
-  active_set_t() : refcnt(1), active(nullptr), lock(false) { 
+  active_set_t() : refcnt(1), active(nullptr), async_count(0), lock(false) { 
     // ::std::cout << "New active set" << ::std::endl;
   }
 

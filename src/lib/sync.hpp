@@ -5,6 +5,9 @@
 #include <atomic>
 #include <memory>
 #include <thread>
+#include <chrono>
+#include <condition_variable>
+#include <queue>
 
 #include "con.hpp"
 #include "fibre.hpp"
@@ -12,6 +15,7 @@
 #include "active_set.hpp"
 #include "svc.hpp"
 #include "sync_sched.hpp"
+#include "clock.hpp"
 
 #define CSP_RETURN {\
   con_t *tmp = caller;\
@@ -42,12 +46,17 @@
 
 #define SVC_READ_REQ(xpreq,xpchan,xpdata)\
   (xpreq)->svc_code = read_request_code_e;\
-  (xpreq)->pdata = xpdata;\
+  (xpreq)->pdata = (void**)xpdata;\
   (xpreq)->chan = xpchan;
 
 #define SVC_WRITE_REQ(xpreq,xpchan,xpdata)\
   (xpreq)->svc_code = write_request_code_e;\
-  (xpreq)->pdata = xpdata;\
+  (xpreq)->pdata = (void**)xpdata;\
+  (xpreq)->chan = xpchan;
+
+#define SVC_ASYNC_WRITE_REQ(xpreq,xpchan,xpdata)\
+  (xpreq)->svc_code = async_write_request_code_e;\
+  (xpreq)->pdata = (void**)xpdata;\
   (xpreq)->chan = xpchan;
 
 #define SVC_SPAWN_FIBRE_REQ(xpreq,xcont)\

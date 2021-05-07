@@ -4,6 +4,7 @@
 enum svc_code_t {
   read_request_code_e,
   write_request_code_e,
+  async_write_request_code_e,
   spawn_fibre_request_code_e,
   spawn_fibre_deferred_request_code_e,
   spawn_pthread_request_code_e

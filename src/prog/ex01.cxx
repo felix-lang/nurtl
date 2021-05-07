@@ -9,7 +9,7 @@ struct hello : con_t {
   CSP_CALLDEF_MID
   CSP_CALLDEF_END
   CSP_RESUME_START
-    ::std::cout << "Hello World" << ::std::endl;
+    ::std::cerr << "Hello World" << ::std::endl;
     CSP_RETURN
   CSP_RESUME_END
 };
@@ -146,10 +146,15 @@ struct init: con_t {
   chan_epref_t ch1inp;
   chan_epref_t ch2out;
   chan_epref_t ch2inp;
+  chan_epref_t clock_connection;
+  io_request_t clock_req;
+  double waituntil;
+  double *pwaituntil;
 
+  ::std::shared_ptr<csp_clock_t> clock;
   ~init() {}
 
-  // store parameters in local variables
+  // store parameters in
   CSP_CALLDEF_START,
     ::std::list<int> *lin,
     ::std::list<int> *lout
@@ -180,6 +185,23 @@ struct init: con_t {
     SVC(&spawn_req)
 
   case 4:
+    clock = make_clock();
+    ::std::cerr << "Clock started, time is " << clock->now() << ::std::endl;
+    clock_connection = clock->connect();
+    ::std::cerr << "Got connection" << ::std::endl;
+    {
+      double rightnow = clock->now();
+      waituntil = rightnow + 120.10;
+      ::std::cerr << ::std::fixed << "Wait until" << waituntil << " for " << waituntil - rightnow << " seconds" << ::std::endl;
+    }
+    ::std::cerr << "Alarm time " << waituntil << ", stored at " << &waituntil
+      << "=" << pwaituntil << " which is stored at " << &pwaituntil << ::std::endl;
+    pwaituntil = &waituntil;
+    SVC_ASYNC_WRITE_REQ(&clock_req,&clock_connection,&pwaituntil);
+    SVC(&clock_req)
+
+  case 5:
+    ::std::cerr<<"Finished" << ::std::endl;
     CSP_RETURN 
 
 
@@ -199,7 +221,7 @@ int main() {
   csp_run((new init)-> call(nullptr, &inlst, &outlst));
 
   // the result is now in the outlist so print it
-  // ::std::cout<< "List of squares:" << ::std::endl;
-  for(auto v : outlst) ::std::cout << v << ::std::endl;
+  // ::std::cerr<< "List of squares:" << ::std::endl;
+  for(auto v : outlst) ::std::cerr << v << ::std::endl;
 } 
 
