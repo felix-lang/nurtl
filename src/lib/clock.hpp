@@ -25,7 +25,7 @@ struct csp_clock_t {
   double now () { 
     auto t = ::std::chrono::high_resolution_clock().now();
     auto d = t.time_since_epoch(); // duration
-    return d.count();
+    return (::std::chrono::duration<double> (d)).count();
   }
 
   csp_clock_t () : run(false) { chanepr = make_channel(); start(); }
@@ -76,7 +76,7 @@ public:
       // activate any fibres that have reached alarm time
       double t = now();
       ::std::cerr << "Time now is " << t << ::std::endl;
-      double sleep_until = t + 10.0; // one second poll
+      double sleep_until = t + 10.0; // ten second poll
       while(!q.empty()) {
         ::std::cerr << "Examining queue" << ::std::endl;
         pqreq_t top = q.top();

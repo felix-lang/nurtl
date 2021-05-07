@@ -191,7 +191,7 @@ struct init: con_t {
     ::std::cerr << "Got connection" << ::std::endl;
     {
       double rightnow = clock->now();
-      waituntil = rightnow + 120.10;
+      waituntil = rightnow + 12.10;
       ::std::cerr << ::std::fixed << "Wait until" << waituntil << " for " << waituntil - rightnow << " seconds" << ::std::endl;
     }
     ::std::cerr << "Alarm time " << waituntil << ", stored at " << &waituntil
