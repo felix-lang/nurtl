@@ -75,6 +75,7 @@ struct consumer: con_t {
     SVC(&r_req)
 
   case 2:
+    ::std::cerr << "Consumer gets " << value << ::std::endl;
     plst->push_back(value);
     CSP_GOTO(1)
 
@@ -198,10 +199,12 @@ struct init: con_t {
       << "=" << pwaituntil << " which is stored at " << &pwaituntil << ::std::endl;
     pwaituntil = &waituntil;
     SVC_ASYNC_WRITE_REQ(&clock_req,&clock_connection,&pwaituntil);
+    ::std::cerr<<"****** INIT Sleeping ********" << ::std::endl;
     SVC(&clock_req)
 
   case 5:
-    ::std::cerr<<"Finished" << ::std::endl;
+    // if this doesn't print, we didn't resume after the sleep correctly
+    ::std::cerr<<"****** INIT Sleep Over ********" << ::std::endl;
     CSP_RETURN 
 
 
@@ -221,7 +224,8 @@ int main() {
   csp_run((new init)-> call(nullptr, &inlst, &outlst));
 
   // the result is now in the outlist so print it
-  // ::std::cerr<< "List of squares:" << ::std::endl;
+  ::std::cerr<< "main: +++++++++ List of squares:" << ::std::endl;
   for(auto v : outlst) ::std::cerr << v << ::std::endl;
+  ::std::cerr<< "main: +++++++++ Done" << ::std::endl;
 } 
 

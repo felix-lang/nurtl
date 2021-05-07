@@ -36,7 +36,7 @@ struct csp_clock_t {
 private:
   // puts f back on its active set after timeout
   void activate_fibre(fibre_t *f) {
-    ::std::cerr << "Activation fibre" << ::std::endl;
+    ::std::cerr << "Wake fibre" << ::std::endl;
     f->owner->push(f);
     f->owner->async_count--;
   }
@@ -45,40 +45,36 @@ public:
   void signal() { cv.notify_one(); }
 
   void service() {
-    ::std::cerr << ::std::fixed << "Clock service started run flag = " << run << ::std::endl;
+    //::std::cerr << ::std::fixed << "Clock service started run flag = " << run << ::std::endl;
     while(run) {
       ::std::cerr << "Clock service iteration" << ::std::endl;
 
       // step 2, read any requests
       channel_t *chan = chanepr->channel;
       
-      while(chan->lock.test_and_set(::std::memory_order_acquire)); // spin
-      fibre_t *w = chan->pop_writer();
-      chan->lock.clear(::std::memory_order_release); // release lock
+      fibre_t *w = chan->ts_pop_writer();
 
       // move any alarm requests from channel to priority queue
       while(w) {
-        ::std::cerr << "Got sleep request" << ::std::endl;
+        //::std::cerr << "Got sleep request" << ::std::endl;
         double **ppalarmat = (double**)w->cc->svc_req->io_request.pdata;
-        ::std::cerr << "Address of data word " << ppalarmat << ::std::endl;
+        //::std::cerr << "Address of data word " << ppalarmat << ::std::endl;
         double *palarmat = *ppalarmat;
-        ::std::cerr << "data word " << palarmat << ::std::endl;
+        //::std::cerr << "data word " << palarmat << ::std::endl;
         double alarmat = *palarmat; 
-        ::std::cerr << "Sleep request found on channel, alarm at " << alarmat << "!" << ::std::endl;
-        ::std::cerr << "Delay = " << alarmat - now() << " seconds" << ::std::endl;
+        //::std::cerr << "Sleep request found on channel, alarm at " << alarmat << "!" << ::std::endl;
+        //::std::cerr << "Delay = " << alarmat - now() << " seconds" << ::std::endl;
         q.push(pqreq_t{alarmat,w});
 
-        while(chan->lock.test_and_set(::std::memory_order_acquire)); // spin
-        w = chan->pop_writer();
-        chan->lock.clear(::std::memory_order_release); // release lock
+        w = chan->ts_pop_writer();
       }
 
       // activate any fibres that have reached alarm time
       double t = now();
-      ::std::cerr << "Time now is " << t << ::std::endl;
+      //::std::cerr << "Time now is " << t << ::std::endl;
       double sleep_until = t + 10.0; // ten second poll
       while(!q.empty()) {
-        ::std::cerr << "Examining queue" << ::std::endl;
+        //::std::cerr << "Examining queue" << ::std::endl;
         pqreq_t top = q.top();
         if(top.alarm_time > t) { 
            sleep_until = top.alarm_time; 

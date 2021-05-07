@@ -57,13 +57,15 @@ retry:
       current = active_set->pop();      // get more work
     }
   }
+  // Async events can reload the active set, but they do NOT change current
   if(active_set->async_count.load() > 0) {
-    // temporary hack! Poll for new work after short sleep
-    // replace with signalable condition variable later
     ::std::this_thread::sleep_for(::std::chrono::milliseconds(10));
-    //::std::cerr << "Scheduler polling async count " << ::std::endl;
+    current = active_set->pop();      // get more work
     goto retry;
   }
+  current = active_set->pop();
+  if (current) goto retry;
+  ::std::cerr << "Scheduler out of work, returning" << ::std::endl;
 }
 
 

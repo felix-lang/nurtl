@@ -60,6 +60,22 @@ struct channel_t {
     top = tmp -> next;
     return tmp;
   }
+
+  fibre_t *ts_pop_reader() {
+    while(lock.test_and_set(::std::memory_order_acquire)); // spin
+    auto r = pop_reader();
+    lock.clear(::std::memory_order_release); // release lock
+    return r;
+  }
+
+  fibre_t *ts_pop_writer() {
+    while(lock.test_and_set(::std::memory_order_acquire)); // spin
+    auto w = pop_writer();
+    lock.clear(::std::memory_order_release); // release lock
+    return w;
+  }
+
+
 };
 
 struct channel_endpoint_t {
