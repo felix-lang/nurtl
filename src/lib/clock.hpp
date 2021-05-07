@@ -47,10 +47,12 @@ private:
   void activate_fibre(fibre_t *f) {
     //::std::cerr << "Wake fibre" << ::std::endl;
     f->owner->push(f);
-    f->owner->async_count--;
+    f->owner->async_complete(); // dec async_count and signal scheduler
   }
 
 public:
+  // this is called by the client to signal the clock
+  // DO NOT CONFUSE with signal to wake up scheduler
   void signal() { cv.notify_one(); }
 
   void service() {

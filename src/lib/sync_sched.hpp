@@ -24,6 +24,7 @@ extern void csp_run(con_t *init) {
 // scheduler subroutine runs until there is no work to do
 void sync_sched::sync_run(con_t *cc) {
   current = new fibre_t(cc, active_set);
+  if(current) ++active_set->running_thread_count;
 retry:
   while(current) // while there's work to do 
   {
@@ -57,16 +58,33 @@ retry:
       current = active_set->pop();      // get more work
     }
   }
+
+  // decrement running thread count
+  active_set->running_thread_count--;
+
   // Async events can reload the active set, but they do NOT change current
-  if(active_set->async_count.load() > 0) {
-    ::std::this_thread::sleep_for(::std::chrono::milliseconds(10));
+rewait:
+  if(active_set->async_count.load() > 0 || active_set->running_thread_count.load() > 0) {
+    // delay
+    {
+      ::std::unique_lock<::std::mutex> lk(active_set->async_lock);
+      active_set->async_wake.wait_for(lk,::std::chrono::milliseconds(10));
+    } // lock released now
     current = active_set->pop();      // get more work
-    goto retry;
+    if(current) {
+      active_set->running_thread_count++;
+      goto retry;
+    }
   }
 
   // POSSIBLE RACE!
   current = active_set->pop();
-  if (current) goto retry;
+  if (current) {
+    active_set->running_thread_count++;
+    goto retry;
+  }
+
+  if(active_set->running_thread_count.load() > 0) goto rewait;
 
   // NO RACE ARGUMENT: the active set is pushed by the async op BEFORE
   // the counter is decremented. So if the counter is zero AND THEN
