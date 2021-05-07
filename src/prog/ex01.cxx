@@ -28,10 +28,10 @@ struct producer : con_t {
 
   CSP_CALLDEF_START,
     ::std::list<int> *plst_a,
-    chan_epref_t outchan
+    chan_epref_t outchan_a
   CSP_CALLDEF_MID
     plst = plst_a;
-    out = outchan;
+    out = outchan_a;
   CSP_CALLDEF_END
 
   CSP_RESUME_START
