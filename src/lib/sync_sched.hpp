@@ -15,6 +15,7 @@ struct sync_sched {
   void do_spawn_fibre(spawn_fibre_request_t *req);
   void do_spawn_fibre_deferred(spawn_fibre_request_t *req);
   void do_spawn_pthread(spawn_fibre_request_t *req);
+  void do_spawn_cothread(spawn_fibre_request_t *req);
 };
 
 extern void csp_run(con_t *init) {
