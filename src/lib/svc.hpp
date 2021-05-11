@@ -15,12 +15,15 @@ struct io_request_t {
   chan_epref_t *chan;
   void **pdata;
 };
+struct async_io_request_t : io_request_t {
+};
 struct spawn_fibre_request_t {
   svc_code_t svc_code;
   con_t *tospawn;
 };
 union svc_req_t {
   io_request_t io_request;
+  async_io_request_t async_io_request;
   spawn_fibre_request_t spawn_fibre_request;
   svc_code_t get_code () const { return io_request.svc_code; }
 };

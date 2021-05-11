@@ -200,8 +200,10 @@ struct init: con_t {
     pwaituntil = &waituntil;
     SVC_ASYNC_WRITE_REQ(&clock_req,&clock_connection,&pwaituntil);
     ::std::cerr<<"****** INIT Sleeping ********" << ::std::endl;
+// too early to signal
+// need different kind of channel w. cv
     SVC(&clock_req)
-
+// too late to signal
   case 5:
     // if this doesn't print, we didn't resume after the sleep correctly
     ::std::cerr<<"****** INIT Sleep Over ********" << ::std::endl;

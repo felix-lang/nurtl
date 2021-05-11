@@ -11,7 +11,7 @@ struct sync_sched {
   void sync_run(con_t *);
   void do_read(io_request_t *req);
   void do_write(io_request_t *req);
-  void do_async_write(io_request_t *req);
+  void do_async_write(async_io_request_t *req);
   void do_spawn_fibre(spawn_fibre_request_t *req);
   void do_spawn_fibre_deferred(spawn_fibre_request_t *req);
   void do_spawn_pthread(spawn_fibre_request_t *req);
@@ -41,7 +41,7 @@ retry:
           do_write(&(svc_req->io_request));
           break;
         case async_write_request_code_e:  
-          do_async_write(&(svc_req->io_request));
+          do_async_write(&(svc_req->async_io_request));
           break;
         case spawn_fibre_request_code_e:  
           do_spawn_fibre(&(svc_req->spawn_fibre_request));
@@ -150,7 +150,8 @@ void sync_sched::do_read(io_request_t *req) {
   }
 }
 
-void sync_sched::do_async_write(io_request_t *req) {
+void sync_sched::do_async_write(async_io_request_t *req) {
+// call the signal
   ++current->owner->async_count;
   do_write(req);
 }
