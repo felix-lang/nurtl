@@ -51,8 +51,12 @@ retry:
           break;
         case spawn_pthread_request_code_e:  
           do_spawn_pthread(&(svc_req->spawn_fibre_request));
+          break;
         case spawn_cothread_request_code_e:  
           do_spawn_cothread(&(svc_req->spawn_fibre_request));
+          break;
+        default:
+          assert(false);
       }
     else // the fibre returned without issuing a request so should be dead
     {
