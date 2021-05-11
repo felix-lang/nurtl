@@ -50,6 +50,8 @@ retry:
           break;
         case spawn_pthread_request_code_e:  
           do_spawn_pthread(&(svc_req->spawn_fibre_request));
+        case spawn_cothread_request_code_e:  
+          do_spawn_cothread(&(svc_req->spawn_fibre_request));
       }
     else // the fibre returned without issuing a request so should be dead
     {
@@ -64,6 +66,8 @@ retry:
 
   // Async events can reload the active set, but they do NOT change current
 rewait:
+  // if the async count > 0 we're waiting for the async op to complete
+  // if the running thread count > 0 we're waiting for other threads to stall
   if(active_set->async_count.load() > 0 || active_set->running_thread_count.load() > 0) {
     // delay
     {
@@ -208,6 +212,11 @@ static void spawn(active_set_t *pa, con_t *cc) {
 }
 void sync_sched::do_spawn_pthread(spawn_fibre_request_t *req) {
   ::std::thread(spawn,new active_set_t,req->tospawn).detach();
+}
+
+void sync_sched::do_spawn_cothread(spawn_fibre_request_t *req) {
+  current->owner->refcnt++;
+  ::std::thread(spawn,current->owner,req->tospawn).detach();
 }
 
 
