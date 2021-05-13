@@ -42,7 +42,7 @@ struct async_channel_endpoint_t {
   
 };
 
-using chan_epref_t = ::std::shared_ptr<async_channel_endpoint_t>;
+using async_chan_epref_t = ::std::shared_ptr<async_channel_endpoint_t>;
 
 chan_async_epref_t make_async_channel() {
   return ::std::make_shared<async_channel_endpoint_t>(new async_channel_t);
