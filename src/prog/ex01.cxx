@@ -147,8 +147,8 @@ struct init: con_t {
   chan_epref_t ch1inp;
   chan_epref_t ch2out;
   chan_epref_t ch2inp;
-  chan_epref_t clock_connection;
-  io_request_t clock_req;
+  async_chan_epref_t clock_connection;
+  async_io_request_t clock_req;
   double waituntil;
   double *pwaituntil;
 

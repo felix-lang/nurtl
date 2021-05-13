@@ -153,7 +153,13 @@ void sync_sched::do_read(io_request_t *req) {
 void sync_sched::do_async_write(async_io_request_t *req) {
 // call the signal
   ++current->owner->async_count;
-  do_write(req);
+
+  // HACK HACK HACK *****************************************
+  auto areq = reinterpret_cast<io_request_t*>(req);
+  // HACK HACK HACK *****************************************
+
+  do_write(areq);
+  req->chan->get()->async_channel->signal();
 }
 
 void sync_sched::do_write(io_request_t *req) {

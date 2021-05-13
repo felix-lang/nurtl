@@ -1,6 +1,7 @@
 
-// svc4.hpp
 // service requests
+//
+// Request codes
 enum svc_code_t {
   read_request_code_e,
   write_request_code_e,
@@ -10,17 +11,28 @@ enum svc_code_t {
   spawn_pthread_request_code_e,
   spawn_cothread_request_code_e
 };
+
+// synchronous I/O requests
 struct io_request_t {
   svc_code_t svc_code;
   chan_epref_t *chan;
   void **pdata;
 };
-struct async_io_request_t : io_request_t {
+
+// asynchronous I/O requests
+struct async_io_request_t {
+  svc_code_t svc_code;
+  async_chan_epref_t *chan;
+  void **pdata;
 };
+
+// fibre and pthread spawn requests
 struct spawn_fibre_request_t {
   svc_code_t svc_code;
   con_t *tospawn;
 };
+
+// unified service request type (only used for casts)
 union svc_req_t {
   io_request_t io_request;
   async_io_request_t async_io_request;

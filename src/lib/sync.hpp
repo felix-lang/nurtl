@@ -13,6 +13,7 @@
 #include "con.hpp"
 #include "fibre.hpp"
 #include "channel.hpp"
+#include "async_channel.hpp"
 #include "active_set.hpp"
 #include "svc.hpp"
 #include "sync_sched.hpp"

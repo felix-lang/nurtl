@@ -18,10 +18,7 @@ struct csp_clock_t;
 void run_service(csp_clock_t *p);
 
 struct csp_clock_t {
-  chan_epref_t chanepr;
-
-  ::std::mutex lock;
-  ::std::condition_variable cv;
+  async_chan_epref_t chanepr;
 
   ::std::priority_queue<pqreq_t> q;
 
@@ -34,13 +31,16 @@ struct csp_clock_t {
     return (::std::chrono::duration<double> (d)).count();
   }
 
-  csp_clock_t () : run(false) { chanepr = make_channel(); start(); }
+  csp_clock_t () : run(false) { 
+    chanepr = make_async_channel(); 
+    start(); 
+  }
   ~csp_clock_t() { 
     // ::std::cerr << "Clock destructor" << ::std::endl; 
     stop(); 
   }
 
-  chan_epref_t connect() { return chanepr->dup(); }
+  async_chan_epref_t connect() { return chanepr->dup(); }
 
 private:
   // puts f back on its active set after timeout
@@ -51,17 +51,13 @@ private:
   }
 
 public:
-  // this is called by the client to signal the clock
-  // DO NOT CONFUSE with signal to wake up scheduler
-  void signal() { cv.notify_one(); }
-
   void service() {
     //::std::cerr << ::std::fixed << "Clock service started run flag = " << run << ::std::endl;
     while(run) {
       //::std::cerr << "Clock service iteration" << ::std::endl;
 
       // step 2, read any requests
-      channel_t *chan = chanepr->channel;
+      async_channel_t *chan = chanepr->async_channel;
       
       fibre_t *w = chan->ts_pop_writer();
 
@@ -100,13 +96,13 @@ public:
       // sleep
       //::std::cerr << "Sleep until " << sleep_until << ", for " << sleep_until - now() << ::std::endl;
       {
-        ::std::unique_lock lk(lock); // lock mutex
+        ::std::unique_lock lk(chan->cv_lock); // lock mutex
         auto t = ::std::chrono::time_point<
            ::std::chrono::high_resolution_clock,
            ::std::chrono::duration<double>> ( 
            ::std::chrono::duration<double>(sleep_until));
 
-        cv.wait_until(lk, t);
+        chan->cv.wait_until(lk, t);
         // mutex is lock on exit from wait but then released by RAII
        }
        //::std::cerr << "Condition variable woke up" << ::std::endl;
