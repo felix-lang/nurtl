@@ -78,13 +78,6 @@ struct channel_t {
 
 };
 
-struct async_channel_t : channel_t {
-  ::std::condition_variable cv;
-  ::std::mutex cvlock;
-
-
-};
-
 struct channel_endpoint_t {
   channel_t *channel;
   channel_endpoint_t(channel_t *p) : channel(p) { ++channel->refcnt; }
