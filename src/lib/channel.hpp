@@ -1,4 +1,4 @@
-// channel4.hpp
+// CHANNEL ABSTRACTION
 
 // low bit fiddling routines
 inline static bool get_lowbit(void *p) { 
@@ -15,9 +15,8 @@ inline static void *set_lowbit(void *p) {
 struct channel_t {
   ::std::atomic_size_t refcnt;
   fibre_t *top;
-  ::std::atomic_flag lock;
   
-  channel_t () : top (nullptr), lock(false) {}
+  channel_t () : top (nullptr) {}
 
   // immobile object
   channel_t(channel_t const&)=delete;
@@ -25,56 +24,53 @@ struct channel_t {
 
   // push a fibre as a reader: precondition it must be a reader
   // and, if the channel is non-empty it must contain only readers
-  void push_reader(fibre_t *r) { 
-    // ::std::cout << "channel " << this << " push reader " << r << ::std::endl;
+  virtual void push_reader(fibre_t *r)=0;
+
+  // push a fibre as a writer: precondition it must be a writer
+  // and, if the channel is non-empty it must contain only writers
+  virtual void push_writer(fibre_t *w)=0;
+
+  // pop a reader if there is one, otherwise nullptr
+  virtual fibre_t *pop_reader()=0;
+
+  // pop a writer if there is one, otherwise nullptr
+  virtual fibre_t *pop_writer()=0;
+
+  virtual void signal()=0;
+
+  // channel read operation
+  virtual read(void **target, fibre_t **pcurrent)=0;
+
+  // channel write operation
+  virtual write(void **source, fibre_t **pcurrent)=0;
+
+protected:
+  // basic push and pop operations, not thread safe
+
+  void st_push_reader(fibre_t *r) { 
     r->next = top; 
     top = r; 
   }
 
-  // push a fibre as a writer: precondition it must be a writer
-  // and, if the channel is non-empty it must contain only writers
-  void push_writer(fibre_t *w) { 
-    // ::std::cout << "channel " << this << " push writer " << w << ::std::endl;
+  void st_push_writer(fibre_t *w) { 
     w->next = top; 
     top = (fibre_t*)set_lowbit(w);
   }
 
-  // pop a reader if there is one, otherwise nullptr
-  fibre_t *pop_reader() { 
-// ::std::cout << "channel::pop reader" << ::std::endl;
+  fibre_t *st_pop_reader() { 
     fibre_t *tmp = top; 
-// ::std::cout << "pop reader " << tmp << ::std::endl;
     if(!tmp || get_lowbit(tmp))return nullptr;
-// ::std::cout << "found reader " << tmp << ::std::endl;
     top = top -> next;
     return tmp; // lowbit is clear, its a reader 
   }
 
-  // pop a writer if there is one, otherwise nullptr
-  fibre_t *pop_writer() { 
-// ::std::cout << "channel::pop writer" << ::std::endl;
+  fibre_t *st_pop_writer() { 
     fibre_t *tmp = top; 
     if(!tmp || !get_lowbit(tmp)) return nullptr;
     tmp = (fibre_t*)clear_lowbit(tmp); // lowbit is set for writer
-// ::std::cout << "found writer " << tmp << ::std::endl;
     top = tmp -> next;
     return tmp;
   }
-
-  fibre_t *ts_pop_reader() {
-    while(lock.test_and_set(::std::memory_order_acquire)); // spin
-    auto r = pop_reader();
-    lock.clear(::std::memory_order_release); // release lock
-    return r;
-  }
-
-  fibre_t *ts_pop_writer() {
-    while(lock.test_and_set(::std::memory_order_acquire)); // spin
-    auto w = pop_writer();
-    lock.clear(::std::memory_order_release); // release lock
-    return w;
-  }
-
 
 };
 
@@ -128,8 +124,4 @@ struct channel_endpoint_t {
 // the one thread at once.
 
 using chan_epref_t = ::std::shared_ptr<channel_endpoint_t>;
-
-chan_epref_t make_channel() {
-  return ::std::make_shared<channel_endpoint_t>(new channel_t);
-}
 
