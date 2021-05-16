@@ -13,7 +13,10 @@ struct active_set_t {
   ::std::mutex async_lock; // mutex lock for async ops
   ::std::condition_variable async_wake;
 
-  void async_complete() { --async_count; async_wake.notify_all(); }
+  void async_complete() { 
+    ::std::cout << "Active set: async complete" << ::std::endl;
+    --async_count; async_wake.notify_all(); 
+  }
 
   ::std::atomic_size_t running_thread_count;
 

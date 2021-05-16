@@ -69,39 +69,21 @@ retry:
 rewait:
   // if the async count > 0 we're waiting for the async op to complete
   // if the running thread count > 0 we're waiting for other threads to stall
+  ::std::cerr << "Scheduler out of fibres: async count = " << active_set->async_count.load() << ::std::endl;
   if(active_set->async_count.load() > 0 || active_set->running_thread_count.load() > 0) {
     // delay
     {
+::std::cerr << "Scheduler sleeping (inf)" << ::std::endl;
       ::std::unique_lock<::std::mutex> lk(active_set->async_lock);
-      active_set->async_wake.wait_for(lk,::std::chrono::milliseconds(10));
+      active_set->async_wake.wait_for(lk,::std::chrono::milliseconds(100000));
     } // lock released now
     current = active_set->pop();      // get more work
     if(current) {
       active_set->running_thread_count++;
       goto retry;
     }
+    goto rewait;
   }
-
-  // POSSIBLE RACE!
-  current = active_set->pop();
-  if (current) {
-    active_set->running_thread_count++;
-    goto retry;
-  }
-
-  if(active_set->running_thread_count.load() > 0) goto rewait;
-
-  // NO RACE ARGUMENT: the active set is pushed by the async op BEFORE
-  // the counter is decremented. So if the counter is zero AND THEN
-  // there is still nothing in the active set, there is no work left.
-  //
-  // this is correct for a SINGLE threaded active_set.
-  //
-  // if there are several schedulers we must keep all of them alive
-  // looping through the delay if neccessary, until
-  // (A) ALL schedulers have no current work
-  // (B) the active set is empty
-  // (C) the async count is zero
 
   ::std::cerr << "Scheduler out of work, returning" << ::std::endl;
 }

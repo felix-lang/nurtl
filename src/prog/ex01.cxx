@@ -187,16 +187,16 @@ struct init: con_t {
 
   case 4:
     clock = make_clock();
-    //::std::cerr << "Clock started, time is " << clock->now() << ::std::endl;
+    ::std::cerr << "Clock started, time is " << clock->now() << ::std::endl;
     clock_connection = clock->connect();
-    //::std::cerr << "Got connection" << ::std::endl;
+    ::std::cerr << "Got connection" << ::std::endl;
     {
       double rightnow = clock->now();
       waituntil = rightnow + 12.10;
-      //::std::cerr << ::std::fixed << "Wait until" << waituntil << " for " << waituntil - rightnow << " seconds" << ::std::endl;
+      ::std::cerr << ::std::fixed << "Wait until" << waituntil << " for " << waituntil - rightnow << " seconds" << ::std::endl;
     }
-    //::std::cerr << "Alarm time " << waituntil << ", stored at " << &waituntil
-    //  << "=" << pwaituntil << " which is stored at " << &pwaituntil << ::std::endl;
+    ::std::cerr << "Alarm time " << waituntil << ", stored at " << &waituntil
+      << "=" << pwaituntil << " which is stored at " << &pwaituntil << ::std::endl;
     pwaituntil = &waituntil;
     SVC_WRITE_REQ(&clock_req,&clock_connection,&pwaituntil);
     ::std::cerr<<"****** INIT Sleeping ********" << ::std::endl;
@@ -207,6 +207,7 @@ struct init: con_t {
   case 5:
     // if this doesn't print, we didn't resume after the sleep correctly
     ::std::cerr<<"****** INIT Sleep Over ********" << ::std::endl;
+    clock->stop();
     CSP_RETURN 
 
 

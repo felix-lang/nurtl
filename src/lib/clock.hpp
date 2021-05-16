@@ -88,16 +88,16 @@ public:
         pqreq_t top = q.top();
         if(top.alarm_time > t) { 
            sleep_until = top.alarm_time; 
-           //::std::cerr << "UNEXPRIRED TIMER" << ::std::endl;
+           ::std::cerr << "UNEXPRIRED TIMER" << ::std::endl;
            break; 
         }
         q.pop();
-        //::std::cerr << "EXPRIRED TIMER for fibre " << top.fibre << ::std::endl;
+        ::std::cerr << "EXPRIRED TIMER for fibre " << top.fibre << ::std::endl;
         activate_fibre(top.fibre);
       }
 
       // sleep
-      //::std::cerr << "Sleep until " << sleep_until << ", for " << sleep_until - now() << ::std::endl;
+      ::std::cerr << "CLOCK: Sleep until " << sleep_until << ", for " << sleep_until - now() << ::std::endl;
       {
         ::std::unique_lock lk(chan->cv_lock); // lock mutex
         auto t = ::std::chrono::time_point<
@@ -109,7 +109,8 @@ public:
         // mutex is lock on exit from wait but then released by RAII
        }
        //::std::cerr << "Condition variable woke up" << ::std::endl;
-    } // infinite loop
+    } // run loop
+    ::std::cerr << "Clock: Run set to " << run << ::std::endl;
   } // service
    
   void start() {
@@ -124,6 +125,7 @@ public:
     //::std::cerr << "Stop clock flag = " << run << ::std::endl;
     if(run) {
       run = false;
+      reinterpret_cast<async_channel_t*>(chanepr->channel)->cv.notify_all(); // wake clock up so it can terminate
       thread.join();
     }
   }
