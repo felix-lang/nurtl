@@ -12,11 +12,13 @@
 
 #include "con.hpp"
 #include "fibre.hpp"
-#include "channel.hpp"
-#include "async_channel.hpp"
-#include "active_set.hpp"
 #include "svc.hpp"
+#include "channel.hpp"
+#include "active_set.hpp"
 #include "sync_sched.hpp"
+#include "sequential_channel.hpp"
+#include "concurrent_channel.hpp"
+#include "async_channel.hpp"
 #include "clock.hpp"
 
 #define CSP_RETURN {\

@@ -5,24 +5,19 @@
 enum svc_code_t {
   read_request_code_e,
   write_request_code_e,
-  async_write_request_code_e,
   spawn_fibre_request_code_e,
   spawn_fibre_deferred_request_code_e,
   spawn_pthread_request_code_e,
   spawn_cothread_request_code_e
 };
 
+struct channel_endpoint_t;
+using chan_epref_t = ::std::shared_ptr<channel_endpoint_t>;
+
 // synchronous I/O requests
 struct io_request_t {
   svc_code_t svc_code;
   chan_epref_t *chan;
-  void **pdata;
-};
-
-// asynchronous I/O requests
-struct async_io_request_t {
-  svc_code_t svc_code;
-  async_chan_epref_t *chan;
   void **pdata;
 };
 
@@ -35,7 +30,6 @@ struct spawn_fibre_request_t {
 // unified service request type (only used for casts)
 union svc_req_t {
   io_request_t io_request;
-  async_io_request_t async_io_request;
   spawn_fibre_request_t spawn_fibre_request;
   svc_code_t get_code () const { return io_request.svc_code; }
 };

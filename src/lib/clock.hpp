@@ -18,7 +18,7 @@ struct csp_clock_t;
 void run_service(csp_clock_t *p);
 
 struct csp_clock_t {
-  async_chan_epref_t chanepr;
+  chan_epref_t chanepr;
 
   ::std::priority_queue<pqreq_t> q;
 
@@ -40,7 +40,7 @@ struct csp_clock_t {
     stop(); 
   }
 
-  async_chan_epref_t connect() { return chanepr->dup(); }
+  chan_epref_t connect() { return chanepr->dup(); }
 
 private:
   // puts f back on its active set after timeout
@@ -53,13 +53,16 @@ private:
 public:
   void service() {
     //::std::cerr << ::std::fixed << "Clock service started run flag = " << run << ::std::endl;
+
+    // This is a hack, but it is perfectly safe because WE constructed
+    // the channel!
+    async_channel_t *chan = reinterpret_cast<async_channel_t*>(chanepr->channel);
     while(run) {
       //::std::cerr << "Clock service iteration" << ::std::endl;
 
       // step 2, read any requests
-      async_channel_t *chan = chanepr->async_channel;
       
-      fibre_t *w = chan->ts_pop_writer();
+      fibre_t *w = chan->pop_writer();
 
       // move any alarm requests from channel to priority queue
       while(w) {
@@ -73,7 +76,7 @@ public:
         //::std::cerr << "Delay = " << alarmat - now() << " seconds" << ::std::endl;
         q.push(pqreq_t{alarmat,w});
 
-        w = chan->ts_pop_writer();
+        w = chan->pop_writer();
       }
 
       // activate any fibres that have reached alarm time

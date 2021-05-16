@@ -39,10 +39,10 @@ struct channel_t {
   virtual void signal()=0;
 
   // channel read operation
-  virtual read(void **target, fibre_t **pcurrent)=0;
+  virtual void read(void **target, fibre_t **pcurrent)=0;
 
   // channel write operation
-  virtual write(void **source, fibre_t **pcurrent)=0;
+  virtual void write(void **source, fibre_t **pcurrent)=0;
 
 protected:
   // basic push and pop operations, not thread safe
@@ -116,12 +116,4 @@ struct channel_endpoint_t {
   }
   
 };
-
-// channel endpoint reference type
-// note, the refcnt is not atomic.
-// this is fine, because endpoints belong exclusively
-// to a single fibre, which cannot be executed by more
-// the one thread at once.
-
-using chan_epref_t = ::std::shared_ptr<channel_endpoint_t>;
 

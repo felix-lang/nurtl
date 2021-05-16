@@ -147,8 +147,8 @@ struct init: con_t {
   chan_epref_t ch1inp;
   chan_epref_t ch2out;
   chan_epref_t ch2inp;
-  async_chan_epref_t clock_connection;
-  async_io_request_t clock_req;
+  chan_epref_t clock_connection;
+  io_request_t clock_req;
   double waituntil;
   double *pwaituntil;
 
@@ -165,9 +165,9 @@ struct init: con_t {
   CSP_CALLDEF_END
 
   CSP_RESUME_START
-    ch1out = make_channel();
+    ch1out = make_concurrent_channel();
     ch1inp = ch1out->dup(); 
-    ch2out = make_channel();
+    ch2out = make_concurrent_channel();
     ch2inp = ch2out->dup();
  
     SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new producer)->call(nullptr, inlst, ch1out))
@@ -198,7 +198,7 @@ struct init: con_t {
     //::std::cerr << "Alarm time " << waituntil << ", stored at " << &waituntil
     //  << "=" << pwaituntil << " which is stored at " << &pwaituntil << ::std::endl;
     pwaituntil = &waituntil;
-    SVC_ASYNC_WRITE_REQ(&clock_req,&clock_connection,&pwaituntil);
+    SVC_WRITE_REQ(&clock_req,&clock_connection,&pwaituntil);
     ::std::cerr<<"****** INIT Sleeping ********" << ::std::endl;
 // too early to signal
 // need different kind of channel w. cv

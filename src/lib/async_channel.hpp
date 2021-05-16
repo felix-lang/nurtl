@@ -33,12 +33,40 @@
 // clients.
 
 struct async_channel_t : channel_t {
+  ::std::atomic_flag lk;
+  void lock() { while(lk.test_and_set(::std::memory_order_acquire)); }
+  void unlock() { lk.clear(::std::memory_order_release); }
+
   ::std::condition_variable cv;
   ::std::mutex cv_lock;
   void signal() { cv.notify_all(); }
 
+  void push_reader(fibre_t *r) final { 
+    lock();
+    st_push_reader(r); 
+    unlock();
+  } 
+  void push_writer(fibre_t *w) final { 
+    lock();
+    st_push_writer(w); 
+    unlock();
+  }
+  fibre_t *pop_reader() final {
+    lock();
+    auto r = st_pop_reader();
+    unlock(); 
+    return r;
+  }
+  fibre_t *pop_writer() final {
+    lock();
+    auto w = st_pop_writer();
+    unlock();
+    return w;
+  }
+
+
   void read(void **target, fibre_t **pcurrent) {
-    current = *pcurrent;
+    fibre_t *current = *pcurrent;
     ++current->owner->async_count;
     lock();
     fibre_t *w = st_pop_writer();
@@ -58,7 +86,7 @@ struct async_channel_t : channel_t {
         st_push_reader(current);
         unlock();
       }
-      *pcurrent = current->owner->active_set->pop(); // active list
+      *pcurrent = current->owner->pop(); // active list
     }
     signal();
   }
@@ -67,14 +95,14 @@ struct async_channel_t : channel_t {
     fibre_t *current = *pcurrent;
     ++current->owner->async_count;
     lock();
-    fibre_t *r = pop_reader();
+    fibre_t *r = st_pop_reader();
     if(r) {
       ++refcnt;
       unlock();
       *r->cc->svc_req->io_request.pdata = *source;
 
-      if(r->owner == current->active_set) {
-        current->active_set->push(current); // current is writer, pushed onto active list
+      if(r->owner == current->owner) {
+        current->owner->push(current); // current is writer, pushed onto active list
         *pcurrent = r; // make reader current
       }
       else {
@@ -87,9 +115,9 @@ struct async_channel_t : channel_t {
         return; // to prevent signalling a deleted channel
       } else {
         --refcnt;
-        push_writer(current); // i/o fail: push current onto channel
+        st_push_writer(current); // i/o fail: push current onto channel
         unlock();
-        *pcurrent = active_set->pop(); // reset current from active list
+        *pcurrent = current->owner->pop(); // reset current from active list
       }
     }
     signal();
@@ -99,6 +127,6 @@ struct async_channel_t : channel_t {
 };
 
 chan_epref_t make_async_channel() {
-  return ::std::make_shared<async_channel_endpoint_t>(new async_channel_t);
+  return ::std::make_shared<channel_endpoint_t>(new async_channel_t);
 }
 

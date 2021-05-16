@@ -2,10 +2,10 @@
 
 struct concurrent_channel_t : channel_t {
   ::std::atomic_flag lk;
-  void lock() { while(lock.test_and_set(::std::memory_order_acquire)); }
-  void unlock() { lock.clear(::std::memory_order_release); }
+  void lock() { while(lk.test_and_set(::std::memory_order_acquire)); }
+  void unlock() { lk.clear(::std::memory_order_release); }
 
-  concurrent_channel_t () : channel_t(), lock(false) {}
+  concurrent_channel_t () : channel_t(), lk(false) {}
 
   void push_reader(fibre_t *r) final { 
     lock();
@@ -29,11 +29,12 @@ struct concurrent_channel_t : channel_t {
     unlock();
     return w;
   }
+
   void signal() final {} 
 
 
   void read(void **target, fibre_t **pcurrent) final {
-    current = *pcurrent;
+    fibre_t *current = *pcurrent;
     lock();
     fibre_t *w = st_pop_writer();
     if(w) {
@@ -51,21 +52,21 @@ struct concurrent_channel_t : channel_t {
         st_push_reader(current);
         unlock();
       }
-      *pcurrent = current->owner->active_set->pop(); // active list
+      *pcurrent = current->owner->pop(); // active list
     }
   }
 
   void write(void **source, fibre_t **pcurrent) final {
     fibre_t *current = *pcurrent;
     lock();
-    fibre_t *r = pop_reader();
+    fibre_t *r = st_pop_reader();
     if(r) {
       ++refcnt;
       unlock();
       *r->cc->svc_req->io_request.pdata = *source;
 
-      if(r->owner == current->active_set) {
-        current->active_set->push(current); // current is writer, pushed onto active list
+      if(r->owner == current->owner) {
+        current->owner->push(current); // current is writer, pushed onto active list
         *pcurrent = r; // make reader current
       }
       else {
@@ -78,9 +79,9 @@ struct concurrent_channel_t : channel_t {
       } else {
         --refcnt;
   // ::std::cout<< "do_write: fibre " << current << ", set channel "<< chan <<" recnt to " << chan->refcnt << ::std::endl;
-        chan->push_writer(current); // i/o fail: push current onto channel
+        st_push_writer(current); // i/o fail: push current onto channel
         unlock();
-        *pcurrent = active_set->pop(); // reset current from active list
+        *pcurrent = current->owner->pop(); // reset current from active list
       }
     }
   }
