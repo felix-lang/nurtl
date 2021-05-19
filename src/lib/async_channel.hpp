@@ -32,40 +32,15 @@
 // A clock holds a request channel endpoint, even when there are no
 // clients.
 
-struct async_channel_t : channel_t {
-  ::std::atomic_flag lk;
-  void lock() { while(lk.test_and_set(::std::memory_order_acquire)); }
-  void unlock() { lk.clear(::std::memory_order_release); }
-
+struct async_channel_t : concurrent_channel_t {
   ::std::condition_variable cv;
   ::std::mutex cv_lock;
-  void signal() { cv.notify_all(); }
 
-  void push_reader(fibre_t *r) final { 
-    lock();
-    st_push_reader(r); 
-    unlock();
-  } 
-  void push_writer(fibre_t *w) final { 
-    lock();
-    st_push_writer(w); 
-    unlock();
-  }
-  fibre_t *pop_reader() final {
-    lock();
-    auto r = st_pop_reader();
-    unlock(); 
-    return r;
-  }
-  fibre_t *pop_writer() final {
-    lock();
-    auto w = st_pop_writer();
-    unlock();
-    return w;
-  }
+  void signal() override { cv.notify_all(); }
 
+  async_channel_t () {}
 
-  void read(void **target, fibre_t **pcurrent) {
+  void read(void **target, fibre_t **pcurrent)  override {
     fibre_t *current = *pcurrent;
     ++current->owner->async_count;
     lock();
@@ -91,7 +66,7 @@ struct async_channel_t : channel_t {
     signal();
   }
 
-  void write(void **source, fibre_t **pcurrent) {
+  void write(void **source, fibre_t **pcurrent) override  {
     fibre_t *current = *pcurrent;
     ++current->owner->async_count;
     lock();

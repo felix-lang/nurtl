@@ -5,14 +5,14 @@ struct sequential_channel_t : channel_t {
   
   sequential_channel_t () : channel_t() {}
 
-  void push_reader(fibre_t *r) final { st_push_reader(r); } 
-  void push_writer(fibre_t *w) final { st_push_writer(w); }
-  fibre_t *pop_reader() final { return st_pop_reader(); }
-  fibre_t *pop_writer() final { return st_pop_writer(); }
+  void push_reader(fibre_t *r) override { st_push_reader(r); } 
+  void push_writer(fibre_t *w) override  { st_push_writer(w); }
+  fibre_t *pop_reader() override  { return st_pop_reader(); }
+  fibre_t *pop_writer() override  { return st_pop_writer(); }
 
-  void signal() final {} 
+  void signal() override  {} 
 
-  void read(void **target, fibre_t **pcurrent) final {
+  void read(void **target, fibre_t **pcurrent) override  {
     fibre_t *current = *pcurrent;
     fibre_t *w = st_pop_writer();
     if(w) {
@@ -32,7 +32,7 @@ struct sequential_channel_t : channel_t {
     }
   }
 
-  void write(void **source, fibre_t **pcurrent) final {
+  void write(void **source, fibre_t **pcurrent) override  {
     fibre_t *current = *pcurrent;
     fibre_t *r = st_pop_reader();
     if(r) {

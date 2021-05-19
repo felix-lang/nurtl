@@ -122,7 +122,7 @@ public:
     //::std::cerr << "thread spawned, flag = " << run << ::std::endl;
   }
   void stop () {
-    //::std::cerr << "Stop clock flag = " << run << ::std::endl;
+    ::std::cerr << "Stop clock flag = " << run << ::std::endl;
     if(run) {
       run = false;
       reinterpret_cast<async_channel_t*>(chanepr->channel)->cv.notify_all(); // wake clock up so it can terminate

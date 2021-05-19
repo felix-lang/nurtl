@@ -1,39 +1,36 @@
 // CONCURRENT CHANNEL (operations are locked, but no async)
 
-struct concurrent_channel_t : channel_t {
+struct concurrent_channel_t : sequential_channel_t {
   ::std::atomic_flag lk;
   void lock() { while(lk.test_and_set(::std::memory_order_acquire)); }
   void unlock() { lk.clear(::std::memory_order_release); }
 
-  concurrent_channel_t () : channel_t(), lk(false) {}
+  concurrent_channel_t () : lk(false) {}
 
-  void push_reader(fibre_t *r) final { 
+  void push_reader(fibre_t *r) override { 
     lock();
     st_push_reader(r); 
     unlock();
   } 
-  void push_writer(fibre_t *w) final { 
+  void push_writer(fibre_t *w) override { 
     lock();
     st_push_writer(w); 
     unlock();
   }
-  fibre_t *pop_reader() final {
+  fibre_t *pop_reader() override {
     lock();
     auto r = st_pop_reader();
     unlock(); 
     return r;
   }
-  fibre_t *pop_writer() final {
+  fibre_t *pop_writer() override {
     lock();
     auto w = st_pop_writer();
     unlock();
     return w;
   }
 
-  void signal() final {} 
-
-
-  void read(void **target, fibre_t **pcurrent) final {
+  void read(void **target, fibre_t **pcurrent) override {
     fibre_t *current = *pcurrent;
     lock();
     fibre_t *w = st_pop_writer();
@@ -56,7 +53,7 @@ struct concurrent_channel_t : channel_t {
     }
   }
 
-  void write(void **source, fibre_t **pcurrent) final {
+  void write(void **source, fibre_t **pcurrent) override {
     fibre_t *current = *pcurrent;
     lock();
     fibre_t *r = st_pop_reader();
