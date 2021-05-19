@@ -18,6 +18,7 @@ struct csp_clock_t;
 void run_service(csp_clock_t *p);
 
 struct csp_clock_t {
+  async_channel_t *chan;
   chan_epref_t chanepr;
 
   ::std::priority_queue<pqreq_t> q;
@@ -32,7 +33,8 @@ struct csp_clock_t {
   }
 
   csp_clock_t () : run(false) { 
-    chanepr = make_async_channel(); 
+    chan = new async_channel_t;
+    chanepr = acquire_async_channel(chan); 
     start(); 
   }
   ~csp_clock_t() { 
@@ -56,7 +58,6 @@ public:
 
     // This is a hack, but it is perfectly safe because WE constructed
     // the channel!
-    async_channel_t *chan = reinterpret_cast<async_channel_t*>(chanepr->channel);
     while(run) {
       //::std::cerr << "Clock service iteration" << ::std::endl;
 
@@ -99,6 +100,15 @@ public:
       // sleep
       ::std::cerr << "CLOCK: Sleep until " << sleep_until << ", for " << sleep_until - now() << ::std::endl;
       {
+        chan->lock();
+        if(!run) {
+          // ALL FIBRES WAITING ON TIMER ARE NOW STUCK AND MUST EITHER BE DELETED 
+          // *** OR ***
+          // THEIR TIMEOUTS ACCELERATED TO NOW
+          chan->unlock();
+          return;
+        }
+        chan->unlock();
         ::std::unique_lock lk(chan->cv_lock); // lock mutex
         auto t = ::std::chrono::time_point<
            ::std::chrono::high_resolution_clock,
@@ -114,18 +124,20 @@ public:
   } // service
    
   void start() {
-    //::std::cerr << "Start clock, flag = " << run << ::std::endl;
+    ::std::cerr << "Start clock, flag = " << run << ::std::endl;
     if(run) return; // already running
     run = true;
     //::std::cerr << "spawning thread, flag = " << run << ::std::endl;
     thread = ::std::thread(run_service, this); // start thread
-    //::std::cerr << "thread spawned, flag = " << run << ::std::endl;
+    ::std::cerr << "thread spawned, flag = " << run << ::std::endl;
   }
   void stop () {
     ::std::cerr << "Stop clock flag = " << run << ::std::endl;
     if(run) {
+      chan->lock();
       run = false;
-      reinterpret_cast<async_channel_t*>(chanepr->channel)->cv.notify_all(); // wake clock up so it can terminate
+      chan->cv.notify_all(); 
+      chan->unlock();
       thread.join();
     }
   }

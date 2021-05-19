@@ -101,7 +101,10 @@ struct async_channel_t : concurrent_channel_t {
 
 };
 
+chan_epref_t acquire_async_channel(async_channel_t *p) {
+  return ::std::make_shared<channel_endpoint_t>(p);
+}
 chan_epref_t make_async_channel() {
-  return ::std::make_shared<channel_endpoint_t>(new async_channel_t);
+  return acquire_async_channel(new async_channel_t);
 }
 
