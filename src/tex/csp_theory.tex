@@ -21,106 +21,156 @@
 \maketitle
 \tableofcontents
 \chapter{CSP model}
-Our CSP model uses a spaghetti stack of heap allocated continuation
-objects linked together with pointers instead of a linear stack.
-Each stack is owned by an object called a fibre.
+An {\em event} in the execution of a closed sequential deterministic program is a 
+change of state that occurs at a particular time and particular instruction. 
+The time and address of the instruction are the {\em coordinates}
+of the event. 
 
-Our usage protocols established in this document are primarily
-focussed on memory management in a real time high performance
-heavily concurrent system such as required for complex audio
-signal processing.
+The difference between the previous and next state in an event
+is called an {\em action}. If an action from one state to the same
+state, so that the action is the identity function, then the program
+can no longer progress and is deemed to have terminated. An instruction
+with this effect is known as a {\em halt}.
 
-When a subroutine is directly called, it is constructed on
-the heap and initialised twice. The first phase of initialisation
-establishes a binding to the most recent activation records
-of its lexically scoped ancestors; the containing parent,
-its parent, and so on up to and including a global context object.
-The bindings are established by the contructor and are then invariant.
+The result of a terminating closed sequential
+program is deterministic and equal to the integral of the actions from its
+initial state to terminating fixpoint.
 
-In the second phase, the arguments of the call are assigned to
-local variables called parameters. Because we are using explicit
-continuation passing, this will include the caller's current
-continuation. The local program counter must be reset as well.
+The {\em trace} of a program is the sequence of events of an execution.
+At a particular event coordinate, the {\em history} of the execution is the 
+collection of previous events, and the {\em continuation} is the future history
+or set of subsequent events.
 
-After initialisation, the resulting suspension is ready to run
-and is executed by repeatedly calling the resume method.
-This method returns a pointer to a continuation.
+A {\em continuation object} is an object which encapsulates the continuation
+of a program. On a typical stack machine it consists of the stack, identified
+by the stack pointer, and the program counter.
 
-Inside the subroutine, the local program counter must be set before
-returning the object this pointer. Then, the resume method will
-execute a switch statement which jumps to the designated location
-based on the value in the program counter. However the subroutine
-may call another by constructing a new continuation object,
-initialising it, and then returning a pointer to it. One of
-the arguments to the call method must of course be the this
-pointer. Returning control requires returning the saved caller
-continuation pointer, however we must also require the continuation
-object to delete itself.
+A {\em threaded} program is one in which multiple threads of control can exist.
+The simultaneous execution of several threads is called {\em concurrency}.
+Memory which two concurrent threads can access is said to be {\em shared}
+between the threads, more generally in any program {\em shared memory} is memory
+which any two threads can access. 
 
-\section{Ownership of closures}
-In an FPL closures are managed by use of a garbage collector.
-We must use a different strategy.
+Shared memory concurrency introduces all sorts of issues. In general the 
+operation of a program is no longer deterministic. The relationship between
+events of one thread and another is no longer a total order. It is generally
+hard to reason about either the correctness of performance of a concurrent 
+program.
 
-If a nested function closure is passed by the parent
-to a down stack subroutine, a variable holding it is a
-{\em weak pointer variable}. Note carefully weakness is property
-of the variable not the pointer value.
+In 1978, Tony Hoare introduced a programming model called {\em Communicating
+Sequential Processes} abbreviated {\em CSP} in a seminal paper you can find here:
+\url{https://www.cs.cmu.edu/~crary/819-f09/Hoare78.pdf}. The paper is informal but
+the semantics were later formalised.
 
-\subsection{Passing closures as arguments}
-A weak pointer variable is one whose lifetime is less than the
-lifetime of the object to which its contained pointer points.
-Since usually a nested function closure passed as an argument to
-a subroutine has a longer lifetime than the called subroutine,
-the parameter accepting the pointer is a weak variable.
+The model eliminates shared memory in favour of synchronisation by transmission
+of values on channels, and provides a calculus with which to reason about the
+behaviour of a program. Nevertheless the model is far too complex for practical
+use. Today there are algorithms which can predict if a CSP model terminates,
+and whether it does so by deadlocking, but these algorithms are complex and take
+a lot of time to run. In addition, shared memory concurrency is essential for
+performance.
 
-A weak pointer variable is weaker than another if its own
-lifetime is longer. Thus, it is safe to store a pointer obtained
-from a weak pointer variable in a weaker one. In other words,
-the called subroutine can pass its parameter to a subroutine it
-calls. It is not necessarily safe to store the pointer in any
-ancestor scope.
+We will introduce a model which is more restricted than full CSP but also supports
+shared memory. In this model, care must be taken in order to ensure it is possible
+to reason about the program.
 
-Weak pointer variables are standard C++ pointers. It is not
-safe to delete the object contained in a weak pointer variable
-nor is it necessary because the variable will become unreachable
-before the object pointed at by its contents is deleted, or,
-conversely, the object will always exist when the pointer is
-accessed through the variable.
+\chapter{Continuations and Resumptions}
+Most modern computing platforms use a computing model based on a stack machine
+augmented with registers. In this model, computational instructions perform
+actions which use and modify registers and memory, where the memory is located by
+considering some register contains a memory address.
 
-Rules of referential transparency also follow a related pattern.
-The sole owner of an object is always free to modify it. However
-once the owner shares access by storing the pointer in a weak
-variable, it must not be modified to retain transparency.
-When the share is lost due to the weak pointer variable being
-destroyed, the owner may again modify the object.
+The two key registers on such a platform are the program counter {\em PC}
+and the stack pointer {\em SP}. When a normal computational instruction
+is executed, the program counter is incremented so as to locate the next
+instruction to execute. This is the {\em continuation} of the program
+at that point.
 
-Passing a pointer to a routine which follows weakness rules
-is called lending the pointer by the provider, and borrowing
-by the acceptor. The associated memory management rule is simply,
-borrowed values can be lent, cannot be modified, and must not
-be deleted by borrowers.
+Special instructions can be used to which also modify the program counter
+non-sequentially, these are typically a jumps and conditional jumps,
+calls, and returns.
 
-Note the immutability constraint can be lifted if that is the
-intention but then referential transparency is lost.
+Call and return instructions are used to implement subroutines and are very
+special because they combine modification of both the program counter
+and stack pointer in a very specific way.
 
-\subsection{Returning closures}
-When a nested function is returned, it must accept ownership
-of the function which returns it. The returning function
-now must not delete itself on return as that would destroy
-the context to which the nested function is bound.
+The {\em current continuation} of an instruction is the location of
+the next instruction to execute, along with the setting of the stack
+pointer.
 
-Therefore, returning a closure also transfers responsibility
-to propagate destruction: when the nested function closure is
-destroyed it should also destroy its parent. Therefore a 
-C++ \verb%unique_ptr% is an ideal vehicle for this purpose.
+The {\em top} of a stack is the location identified by the stack pointer.
+When the stack pointer is advanced and a value stored at the new top
+of the stack, we say the value has been pushed onto the stack.
+When a value is retrived from the top and the stack pointer retarded,
+we say the value has been popped from the stack. Note that whilst 
+we tend to say a stack pointer is incremented to make space for a new
+top, most modern machines actually put the base of the stack at a high
+address and advance the stack by decrementing the stack pointer.
 
-Unfortunately, this is where things get messy!
-If a routine A has a child B which has a child C, and
-A calls B which returns C, then C is bound to both B and
-also A. The binding to B is an exclusive ownership, whereas
-the binding to A is weak. If A now stores C in a local
-variable, it cannot be a weak variable.
+A {\em call} instruction jumps to a new location by setting the program counter
+to a the entry point of a subroutine, whilst simultaneously pushing the
+current continuation onto the stack. The routine executing the call
+instruction is termed the {\em caller}. The routine which is 
+called is termed the {\em callee}. 
 
+
+A {\em return} instruction pops the callers current continuation into the
+program counter. 
+
+In a programming language, a lexically contigous section of programming
+code with a well established semantic is called a {\em module}. The most
+common small scale module available is called a {\em routine.} It has
+a single entry point but no well defined exit. A routine typically has
+a well defined set of parameters which are locations on the machine
+stack, and the parameters are said to be {\em bound} to argument expressions
+by evaluating these expressions and storing the results in the parameters
+before the routine is called. 
+
+In a programming language based on the {\em structured programming} model,
+modules are {\em subroutines}. A subroutine is a routine, which has a well
+defined mechanism to exit. A subroutine is entered with a call instruction
+to its entry point, and exits by the return instruction, which resets the
+machine stack and program counter to the callers current continuation. 
+The subroutine is thus completed or terminated, and the caller, 
+which during subroutine execution is considered to be {\em suspended}, is 
+{\em resumed} when the subroutine completes.
+
+Subroutines allow the heirarchical decomposition of operations and are
+a powerful tool. It is important to understand that the call and return
+instructions used {\em couple} transmission of data with control flow
+implicitly by use of the machine stack. This is what structured
+programming is. The source code structure is similarly heirarchical
+which leads to lexical nesting of units called blocks as well as 
+decomposition of the program into subroutines. Because parameters
+of subroutines are stack locations, they can be {\em reused} with different
+arguments. In addition, working memory can be obtained by the subroutine
+from the machine stack and discarded before resuming the caller.
+
+However subroutines are severely limited in their utility by the 
+implicit coupling of control flow and data transmission which requires
+a machine stack. The problem is, to run many threads of control, you need
+a lot of machine stacks. Machine stacks on modern machines are very time efficient
+but consume a lot of address space because the stack must be allocated
+to be large enough to hold the maximum requirement of a thread, at times
+when less is used the unused address space remains.
+
+In addition, modern systems share the limited number of available
+cores between threads by pre-emptions. The operating system has to switch
+stacks and load and save registers, which is very expensive, especially
+on CISC machines such as those produced by Intel.
+
+Therefore, we will solve this problem by dynamically allocating
+stack frames from the heap, and we will use routines instead 
+of subroutines, for which we {\em explicitly} pass the current
+continuation as an argument.
+
+This model is known as {\em Continuation Passing Style} or CPS.
+In this model, the heap allocated stack frames are encapsulated
+continuation objects which are linked together by explicitly
+storing the callers continuation pointer; the resulting singly
+linked list is called a {\em spaghetti stack}.
+
+\chapter{Coroutines}
+`
 
 \end{document}
-

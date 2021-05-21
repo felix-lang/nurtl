@@ -5,6 +5,8 @@
 #include <list>
 
 struct hello : con_t {
+  hello(global_t *g) : con_t(g) {}
+
   CSP_CALLDEF_START
   CSP_CALLDEF_MID
   CSP_CALLDEF_END
@@ -24,6 +26,8 @@ struct producer : con_t {
     int value;
   };
   io_request_t w_req;
+
+  producer(global_t *g) : con_t(g) {}
   ~producer() { }
 
   CSP_CALLDEF_START,
@@ -58,6 +62,7 @@ struct consumer: con_t {
   io_request_t r_req;
   chan_epref_t inp;
 
+  consumer(global_t *g) : con_t(g) {}
   ~consumer() {}
 
   CSP_CALLDEF_START,
@@ -85,6 +90,8 @@ struct consumer: con_t {
 struct square : con_t {
   int inp;
   int *pout;
+
+  square(global_t *g) : con_t(g) {}
  
   CSP_CALLDEF_START,
     int *pout_a,
@@ -110,6 +117,8 @@ struct transducer: con_t {
   io_request_t w_req;
   chan_epref_t inp;
   chan_epref_t out;
+
+  transducer(global_t *g) : con_t(g) {}
 
   ~transducer() {}
 
@@ -152,7 +161,8 @@ struct init: con_t {
   double waituntil;
   double *pwaituntil;
 
-  ::std::shared_ptr<csp_clock_t> clock;
+  init(global_t *g) : con_t(g) {}
+
   ~init() {}
 
   // store parameters in
@@ -170,28 +180,28 @@ struct init: con_t {
     ch2out = make_concurrent_channel();
     ch2inp = ch2out->dup();
  
-    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new producer)->call(nullptr, inlst, ch1out))
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new producer(global))->call(nullptr, inlst, ch1out))
     SVC(&spawn_req)
  
   case 1:
-    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new transducer)->call(nullptr, ch1inp, ch2out))
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new transducer(global))->call(nullptr, ch1inp, ch2out))
     SVC(&spawn_req)
  
   case 2:
-    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new consumer)->call(nullptr, outlst,ch2inp))
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new consumer(global))->call(nullptr, outlst,ch2inp))
     SVC(&spawn_req)
  
   case 3:
-    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new hello)->call(nullptr))
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new hello(global))->call(nullptr))
     SVC(&spawn_req)
 
   case 4:
-    clock = make_clock();
-    ::std::cerr << "Clock started, time is " << clock->now() << ::std::endl;
-    clock_connection = clock->connect();
+    global->system_clock->start();
+    ::std::cerr << "Clock started, time is " << global->system_clock->now() << ::std::endl;
+    clock_connection = global->system_clock->connect();
     ::std::cerr << "Got connection" << ::std::endl;
     {
-      double rightnow = clock->now();
+      double rightnow = global->system_clock->now();
       waituntil = rightnow + 12.10;
       ::std::cerr << ::std::fixed << "Wait until" << waituntil << " for " << waituntil - rightnow << " seconds" << ::std::endl;
     }
@@ -207,7 +217,6 @@ struct init: con_t {
   case 5:
     // if this doesn't print, we didn't resume after the sleep correctly
     ::std::cerr<<"****** INIT Sleep Over ********" << ::std::endl;
-    clock->stop();
     CSP_RETURN 
 
 
@@ -224,7 +233,11 @@ int main() {
   // empty output list
   ::std::list<int> outlst;
 
-  csp_run((new init)-> call(nullptr, &inlst, &outlst));
+  {
+    global_t *global = new global_t; 
+    csp_run((new init(global))-> call(nullptr, &inlst, &outlst));
+    delete global;
+  }
 
   // the result is now in the outlist so print it
   ::std::cerr<< "main: +++++++++ List of squares:" << ::std::endl;

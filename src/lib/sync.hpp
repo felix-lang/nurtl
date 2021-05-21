@@ -1,4 +1,3 @@
-
 #include <cstdint>
 #include <cassert>
 #include <cstdio>
@@ -10,6 +9,7 @@
 #include <queue>
 #include <iostream>
 
+struct global_t;
 #include "con.hpp"
 #include "fibre.hpp"
 #include "svc.hpp"
@@ -20,6 +20,7 @@
 #include "concurrent_channel.hpp"
 #include "async_channel.hpp"
 #include "clock.hpp"
+#include "global.hpp"
 
 #define CSP_RETURN {\
   con_t *tmp = caller;\
@@ -84,16 +85,16 @@
   return this;
 
 #define CSP_CALL_DIRECT0(procedure)\
-  return (new procedure)->call(this);
+  return (new procedure(global))->call(this);
 
 #define CSP_CALL_DIRECT1(procedure,arg)\
-  return (new procedure)->call(this,arg);
+  return (new procedure(global))->call(this,arg);
 
 #define CSP_CALL_DIRECT2(procedure,arg1,arg2)\
-  return (new procedure)->call(this,arg1,arg2);
+  return (new procedure(global))->call(this,arg1,arg2);
 
 
 #define CSP_CALL_DIRECT3(procedure,arg1,arg2,arg3)\
-  return (new procedure)->call(this,arg1,arg2,arg3);
+  return (new procedure(global))->call(this,arg1,arg2,arg3);
 
 
