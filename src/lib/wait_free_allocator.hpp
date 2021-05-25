@@ -39,6 +39,9 @@ struct mem_req_t {
   size_t n_blocks;
 };
 
+static size_t calblocksize(size_t n) {
+  return n % 8 == 0 ? n : (n / 8 + 1) * 8;
+}
 
 struct wait_free_allocator_t {
   void **arena;                                   // the memory to be allocated
@@ -46,14 +49,11 @@ struct wait_free_allocator_t {
 
   ~wait_free_allocator_t() { free(arena); }
 
-  // roundup the size to the least number of words holding the required number of bytes
-  static size_t calidx(size_t n) { return n / sizeof(void*) + size_t(n % sizeof(void*) != 0); }
-
   void *allocate(size_t n_bytes) { 
-    return ring_buffer_pointers[calidx(n)]->pop(); 
+    return ring_buffer_pointers[calblocksize(n)]->pop(); 
   }
   void deallocate(void *memory, size_t bytes) { 
-   ring_buffer_pointers[calidx(n)]->push(memory); 
+   ring_buffer_pointers[calblocksize(n)]->push(memory); 
   }
 
   // immobile
@@ -87,17 +87,14 @@ struct wait_free_allocator_t {
 // block sizes must be multiples of 8
 // this may have to be changed to 16 if long double is used 
 // and requires double word alignment
-static size_t calblocksize(size_t n) {
-  return n % 8 == 0 ? n : (n / 8 + 1) * 8;
-}
-static size_t calringbuffersize(size_t n) {
+static size_t calringbuffersize(size_t v) {
  v--;
- v |= n >> 1;
- v |= n >> 2;
- v |= n >> 4;
- v |= n >> 8;
- v |= n >> 16;
- v |= n >> 32;
+ v |= v >> 1;
+ v |= v >> 2;
+ v |= v >> 4;
+ v |= v >> 8;
+ v |= v >> 16;
+ v |= v >> 32;
  v++;
  return v;
 }
@@ -110,14 +107,33 @@ void wait_free_allocator(::std::vector<mem_req_t> reqs) {
 
   // make an array mapping block size to request count
   ::std::vector<size_t> nblocks;
-  for (size_t i = 0; i <= max_block_size; ++i) nblocks.push_back(0);
-  for (auto req: reqs) nblocks[calblocksize(req.block_size)] += req.n_blocks;
+  for (size_t i = 0; i <= max_block_size; ++i) 
+    nblocks.push_back(0);
+  for (auto req: reqs) 
+    nblocks[calblocksize(req.block_size)] += req.n_blocks;
 
   // find user memory requirement
   size_t user_memory = 0;
-  for (size_t i = 0; i <= max_block_size; ++i) user_memory += i * nblocks[i]; 
+  for (size_t i = 0; i <= max_block_size; ++i) 
+    user_memory += i * nblocks[i]; 
 
   // calculate the store required for ring buffers
+  size_t ring_buffer_memory = 0;
+  for (size_t i = 0; i <= max_block_size; ++i) 
+    ring_buffer_memory += calringbuffersize(nblocks[i]); 
 
+  // calculate store required for ring buffer objects
+  size_t ring_buffer_object_memory = 0
+  for (size_t i = 0; i <= max_block_size; ++i) 
+    ring_buffer_object_memory +=  (nblocks == 0 ? 0 : sizeof(wait_free_ring_buffer_t);
+
+  // calculate store for ring_buffer_pointers
+  size_t ring_buffer_pointer_memory = max_block_size * sizeof(ring_buffer_t*);
+
+  // total store requirement
+  size_t arena_memory = user_memory + ring_buffer_memory + ring_buffer_object_memory + ring_buffer_pointer_memory;
+
+  arena = malloc(arena_memory);
+ 
 }
  
