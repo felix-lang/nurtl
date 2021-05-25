@@ -83,4 +83,41 @@ struct wait_free_allocator_t {
 // to improve startup and termination times (because ALL the memory ever
 // needed is allocate on startup and remains allocated until the allocator
 // is destroyed).
+
+// block sizes must be multiples of 8
+// this may have to be changed to 16 if long double is used 
+// and requires double word alignment
+static size_t calblocksize(size_t n) {
+  return n % 8 == 0 ? n : (n / 8 + 1) * 8;
+}
+static size_t calringbuffersize(size_t n) {
+ v--;
+ v |= n >> 1;
+ v |= n >> 2;
+ v |= n >> 4;
+ v |= n >> 8;
+ v |= n >> 16;
+ v |= n >> 32;
+ v++;
+ return v;
+}
+
+void wait_free_allocator(::std::vector<mem_req_t> reqs) {
+
+  // find the largest block requested
+  size_t max_block_size = 0;
+  for(auto req: reqs) maxblock = max(req.block_size, max_block_size);
+
+  // make an array mapping block size to request count
+  ::std::vector<size_t> nblocks;
+  for (size_t i = 0; i <= max_block_size; ++i) nblocks.push_back(0);
+  for (auto req: reqs) nblocks[calblocksize(req.block_size)] += req.n_blocks;
+
+  // find user memory requirement
+  size_t user_memory = 0;
+  for (size_t i = 0; i <= max_block_size; ++i) user_memory += i * nblocks[i]; 
+
+  // calculate the store required for ring buffers
+
+}
  
