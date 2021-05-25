@@ -1,3 +1,9 @@
+struct allocator_t {
+  virtual void *allocate(size_t)=0;
+  void deallocate(void *, size_t)=0;
+  ~allocator_t()=0;
+};
+
 // wait free ring buffer
 // Semantics: 
 // Pushing beyond capacity is undefined behaviour
@@ -43,16 +49,18 @@ static size_t calblocksize(size_t n) {
   return n % 8 == 0 ? n : (n / 8 + 1) * 8;
 }
 
-struct wait_free_allocator_t {
+struct wait_free_allocator_t : allocator_t {
+  allocator_t *allocator;
   void **arena;                                   // the memory to be allocated
+  size_t arena_size;
   wait_free_ring_buffer_t **ring_buffer_pointers; // array of ring buffer pointers 
 
-  ~wait_free_allocator_t() { free(arena); }
+  ~wait_free_allocator_t() { allocator->deallocate(arena, arena_size); }
 
-  void *allocate(size_t n_bytes) { 
+  void *allocate(size_t n_bytes) override { 
     return ring_buffer_pointers[calblocksize(n)]->pop(); 
   }
-  void deallocate(void *memory, size_t bytes) { 
+  void deallocate(void *memory, size_t bytes) override { 
    ring_buffer_pointers[calblocksize(n)]->push(memory); 
   }
 
@@ -60,7 +68,7 @@ struct wait_free_allocator_t {
   wait_free_allocator_t(wait_free_allocator_t const&)=delete;
   wait_free_allocator_t &operator=(wait_free_allocator_t const&)=delete;
 
-  wait_free_allocator(::std::vector<mem_req_t>);
+  wait_free_allocator(allocator_t, ::std::vector<mem_req_t>);
 };
 
 // Allocator construction
@@ -99,7 +107,7 @@ static size_t calringbuffersize(size_t v) {
  return v;
 }
 
-void wait_free_allocator(::std::vector<mem_req_t> reqs) {
+void wait_free_allocator(allocator_t *a, ::std::vector<mem_req_t> reqs) : allocator(a) {
 
   // find the largest block requested
   size_t max_block_size = 0;
@@ -131,9 +139,40 @@ void wait_free_allocator(::std::vector<mem_req_t> reqs) {
   size_t ring_buffer_pointer_memory = max_block_size * sizeof(ring_buffer_t*);
 
   // total store requirement
-  size_t arena_memory = user_memory + ring_buffer_memory + ring_buffer_object_memory + ring_buffer_pointer_memory;
+  arena_size = user_memory + ring_buffer_memory + ring_buffer_object_memory + ring_buffer_pointer_memory;
 
-  arena = malloc(arena_memory);
- 
+  arena = allocator->allocate (arena_size);
+
+  unsigned char *area_pointer = arena;
+
+  // allocate ring buffer pointer array 
+  ring_buffer_pointers = (ring_buffer_pointers**)(void*)arena_pointer; 
+  arena_pointer += ring_buffer_pointer_memory;
+  for(size_t i = 0; i <= max_block_size; ++i) ring_buffer_pointers[i] = nullptr; 
+
+  // allocate and initialise ring buffer objects
+  wait_free_ring_buffer_t *p;
+  for(k=max_block_size; --k; k>0) {
+    if(nblocks[k] == 0) ring_buffer_pointers[k] = p;
+    else {
+      // pointer to ring buffer object
+      wait_free_ring_buffer_t *ring_buffer_object_pointer = (wait_free_ring_buffer_t*)(void*)arena_pointer;
+      arena_pointer += sizeof(wait_free_ring_buffer_t);
+
+      // pointer to actual ring buffer
+      void **ring_buffer_buffer_pointer = arena_pointer;
+      arena_pointer += calringbuffersize(nblocks[k]);
+
+      // initialise ring buffer object
+      new(ring_buffer_object_pointer) wait_free_ring_buffer_t (ring_buffer_buffer_pointer);
+
+      // allocate the client storage
+      for(size_t i = 0; i<nblocks[k]; ++i) {
+        ring_buffer_object_pointer->push(arena_pointer); // one block
+        arena_pointer += k;
+      } 
+    }
+  }
+  assert(arena_pointer == arena + arena_size); 
 }
  
