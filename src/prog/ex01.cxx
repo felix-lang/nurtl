@@ -1,8 +1,12 @@
 #include <iostream>
 #include <cassert>
+#include <list>
+
+
+#include "global.hpp";
+
 // TEST CASE
 #include "sync.hpp"
-#include <list>
 
 struct hello : con_t {
   hello(global_t *g) : con_t(g) {}
@@ -234,8 +238,19 @@ int main() {
   ::std::list<int> outlst;
 
   {
+    ::std::vector<mem_reqs_t> reqs;
+    reqs.push_back(mem_req_t {sizeof(hello),50});
+    reqs.push_back(mem_req_t {sizeof(producer),50});
+    reqs.push_back(mem_req_t {sizeof(transducer),50});
+    reqs.push_back(mem_req_t {sizeof(consumer),50});
+    reqs.push_back(mem_req_t {sizeof(init),50});
+    reqs.push_back(mem_req_t {sizeof(square),50});
+ 
+
     global_t *global = new global_t; 
+    global->real_time_allocator = new wait_free_allocator(reqs);
     csp_run((new init(global))-> call(nullptr, &inlst, &outlst));
+    delete global->real_time_allocator;
     delete global;
   }
 

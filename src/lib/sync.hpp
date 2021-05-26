@@ -9,6 +9,11 @@
 #include <queue>
 #include <iostream>
 
+#include "allocator.hpp"
+#include "malloc_free_allocator.hpp"
+#include "wait_free_ring_buffer.hpp"
+#include "wait_free_allocator.hpp"
+
 struct global_t;
 #include "con.hpp"
 #include "fibre.hpp"
