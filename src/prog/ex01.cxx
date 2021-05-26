@@ -35,7 +35,7 @@ struct producer : con_t {
   ~producer() { }
 
   CSP_CALLDEF_START,
-    ::std::list<int> *plst_a,
+    ::std::list<int> *plst_a,System Extension Blocked
     chan_epref_t outchan_a
   CSP_CALLDEF_MID
     plst = plst_a;
