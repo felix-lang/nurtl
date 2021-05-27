@@ -20,7 +20,7 @@ struct wait_free_allocator_t : allocator_t {
 
   wait_free_ring_buffer_t **ring_buffer_pointers; // array of ring buffer pointers 
 
-  ~wait_free_allocator_t() override { allocator->deallocate(arena, arena_size); }
+  ~wait_free_allocator_t() overridep{ allocator->deallocate(arena, arena_size); }
 
   void *allocate(size_t n_bytes) override { 
     return ring_buffer_pointers[calblocksize(n_bytes)]->pop(); 
