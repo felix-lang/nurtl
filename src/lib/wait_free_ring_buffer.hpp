@@ -23,8 +23,8 @@ struct wait_free_ring_buffer_t {
   // the buffer can be either empty or full (but not partially filled)
   wait_free_ring_buffer_t (size_t n, void **d) : n_entries(n), head(0), tail(0), data(d) {}
 
-  // uncopyable
-  void wait_free_ring_buffer_t(wait_free_ring_buffer_t const&) = delete;
+  // immobile
+  wait_free_ring_buffer_t(wait_free_ring_buffer_t const&) = delete;
   wait_free_ring_buffer_t &operator=(wait_free_ring_buffer_t const&) = delete;
 
   // destructor

@@ -3,10 +3,10 @@
 #include <list>
 
 
-#include "global.hpp";
+#include "sync.hpp"
+#include "global.hpp"
 
 // TEST CASE
-#include "sync.hpp"
 
 struct hello : con_t {
   hello(global_t *g) : con_t(g) {}
@@ -35,7 +35,7 @@ struct producer : con_t {
   ~producer() { }
 
   CSP_CALLDEF_START,
-    ::std::list<int> *plst_a,System Extension Blocked
+    ::std::list<int> *plst_a,
     chan_epref_t outchan_a
   CSP_CALLDEF_MID
     plst = plst_a;
@@ -238,7 +238,7 @@ int main() {
   ::std::list<int> outlst;
 
   {
-    ::std::vector<mem_reqs_t> reqs;
+    ::std::vector<mem_req_t> reqs;
     reqs.push_back(mem_req_t {sizeof(hello),50});
     reqs.push_back(mem_req_t {sizeof(producer),50});
     reqs.push_back(mem_req_t {sizeof(transducer),50});
@@ -248,9 +248,11 @@ int main() {
  
 
     global_t *global = new global_t; 
-    global->real_time_allocator = new wait_free_allocator(reqs);
+    allocator_t *malloc_free = new malloc_free_allocator_t;
+    global->real_time_allocator = new wait_free_allocator_t(malloc_free,reqs);
     csp_run((new init(global))-> call(nullptr, &inlst, &outlst));
     delete global->real_time_allocator;
+    delete malloc_free;
     delete global;
   }
 

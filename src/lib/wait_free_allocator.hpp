@@ -5,33 +5,40 @@ struct mem_req_t {
   size_t n_blocks;
 };
 
+// given a memory block size of n bytes,
+// calculate the smallest legitimate allocation
+// amount which can contain n bytes
+
 static size_t calblocksize(size_t n) {
   return n % 8 == 0 ? n : (n / 8 + 1) * 8;
 }
 
 struct wait_free_allocator_t : allocator_t {
   allocator_t *allocator;
-  void **arena;                                   // the memory to be allocated
+  unsigned char *arena;  // the memory to be allocated 
   size_t arena_size;
+
   wait_free_ring_buffer_t **ring_buffer_pointers; // array of ring buffer pointers 
 
-  ~wait_free_allocator_t() { allocator->deallocate(arena, arena_size); }
+  ~wait_free_allocator_t() override { allocator->deallocate(arena, arena_size); }
 
   void *allocate(size_t n_bytes) override { 
-    return ring_buffer_pointers[calblocksize(n)]->pop(); 
+    return ring_buffer_pointers[calblocksize(n_bytes)]->pop(); 
   }
   void deallocate(void *memory, size_t bytes) override { 
-   ring_buffer_pointers[calblocksize(n)]->push(memory); 
+   ring_buffer_pointers[calblocksize(bytes)]->push(memory); 
   }
 
   // immobile
   wait_free_allocator_t(wait_free_allocator_t const&)=delete;
   wait_free_allocator_t &operator=(wait_free_allocator_t const&)=delete;
 
-  wait_free_allocator(allocator_t, ::std::vector<mem_req_t>);
+  wait_free_allocator_t(allocator_t *, ::std::vector<mem_req_t>);
 };
 
+// ***************************************************************************
 // Allocator construction
+// ***************************************************************************
 //
 // The allocator construction is messy and difficult; we have to get
 // the maths exactly right.
@@ -51,10 +58,29 @@ struct wait_free_allocator_t : allocator_t {
 // to improve startup and termination times (because ALL the memory ever
 // needed is allocate on startup and remains allocated until the allocator
 // is destroyed).
+// ***************************************************************************
 
-// block sizes must be multiples of 8
-// this may have to be changed to 16 if long double is used 
+
+// Given the number of blocks v of some size required
+// round up to the smallest power of 2 containing v entries
+// 
+// this is required so the modular arithmetic continues
+// to be correct when the indices roll past 2^64
+//
+// Thus ring buffers may contain up to twice minus one
+// wasted slots.
 // and requires double word alignment
+//
+// Note: if we have one operation per pico-second
+// the counter will roll over in 213 days
+// If we have one operation per nano-second
+// the counter will roll over after 584 years
+//
+// thus for most practical purposes, this routine
+// could be replaced by the identity function,
+// however the memory savings are likely small
+// unless there are a lot of very small blocks
+//
 static size_t calringbuffernentries(size_t v) {
  v--;
  v |= v >> 1;
@@ -67,11 +93,11 @@ static size_t calringbuffernentries(size_t v) {
  return v;
 }
 
-void wait_free_allocator(allocator_t *a, ::std::vector<mem_req_t> reqs) : allocator(a) {
+wait_free_allocator_t::wait_free_allocator_t(allocator_t *a, ::std::vector<mem_req_t> reqs) : allocator(a) {
 
   // find the largest block requested
   size_t max_block_size = 0;
-  for(auto req: reqs) maxblock = max(req.block_size, max_block_size);
+  for(auto req: reqs) max_block_size = ::std::max(req.block_size, max_block_size);
 
   // make an array mapping block size to request count
   ::std::vector<size_t> nblocks;
@@ -91,27 +117,27 @@ void wait_free_allocator(allocator_t *a, ::std::vector<mem_req_t> reqs) : alloca
     ring_buffer_memory += calringbuffernentries(nblocks[i]) * sizeof(void*); 
 
   // calculate store required for ring buffer objects
-  size_t ring_buffer_object_memory = 0
+  size_t ring_buffer_object_memory = 0;
   for (size_t i = 0; i <= max_block_size; ++i) 
-    ring_buffer_object_memory +=  (nblocks == 0 ? 0 : sizeof(wait_free_ring_buffer_t);
+    ring_buffer_object_memory +=  (nblocks[i] == 0 ? 0 : sizeof(wait_free_ring_buffer_t));
 
   // calculate store for ring_buffer_pointers
-  size_t ring_buffer_pointer_memory = max_block_size * sizeof(ring_buffer_t*);
+  size_t ring_buffer_pointer_memory = max_block_size * sizeof(wait_free_ring_buffer_t*);
 
   // total store requirement
   arena_size = user_memory + ring_buffer_memory + ring_buffer_object_memory + ring_buffer_pointer_memory;
 
-  arena = allocator->allocate (arena_size);
+  arena = (unsigned char*)allocator->allocate (arena_size);
 
-  unsigned char *area_pointer = arena;
+  unsigned char *arena_pointer = arena;
 
   // allocate ring buffer pointer array 
-  ring_buffer_pointers = (ring_buffer_pointers**)(void*)arena_pointer; 
+  ring_buffer_pointers = (wait_free_ring_buffer_t**)(void*)arena_pointer; 
   arena_pointer += ring_buffer_pointer_memory;
 
   // allocate and initialise ring buffer objects
   wait_free_ring_buffer_t *ring_buffer_object_pointer;
-  for(size_t k = max_block_size; --k; k > 0) {
+  for(size_t k = max_block_size; k>0; --k) {
     if(nblocks[k] == 0) ring_buffer_pointers[k] = ring_buffer_object_pointer;
     else {
       // pointer to ring buffer object
@@ -119,7 +145,7 @@ void wait_free_allocator(allocator_t *a, ::std::vector<mem_req_t> reqs) : alloca
       arena_pointer += sizeof(wait_free_ring_buffer_t);
 
       // pointer to actual ring buffer
-      void **ring_buffer_buffer_pointer = arena_pointer;
+      void **ring_buffer_buffer_pointer = (void**)(void*)arena_pointer;
       size_t n_entries = calringbuffernentries(nblocks[k]);
       arena_pointer += n_entries * sizeof(void*);
 

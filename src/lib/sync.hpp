@@ -9,12 +9,19 @@
 #include <queue>
 #include <iostream>
 
+
+struct global_t;
+struct csp_clock_t;
+struct fibre_t;
+struct channel_t;
+struct active_set_t;
+struct con_t;
+
 #include "allocator.hpp"
 #include "malloc_free_allocator.hpp"
 #include "wait_free_ring_buffer.hpp"
 #include "wait_free_allocator.hpp"
 
-struct global_t;
 #include "con.hpp"
 #include "fibre.hpp"
 #include "svc.hpp"
@@ -25,7 +32,6 @@ struct global_t;
 #include "concurrent_channel.hpp"
 #include "async_channel.hpp"
 #include "clock.hpp"
-#include "global.hpp"
 
 #define CSP_RETURN {\
   con_t *tmp = caller;\
