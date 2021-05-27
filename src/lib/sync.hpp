@@ -95,6 +95,7 @@ struct con_t;
   pc = caseno;\
   return this;
 
+/*
 #define CSP_CALL_DIRECT0(procedure)\
   return (new procedure(global))->call(this);
 
@@ -107,5 +108,5 @@ struct con_t;
 
 #define CSP_CALL_DIRECT3(procedure,arg1,arg2,arg3)\
   return (new procedure(global))->call(this,arg1,arg2,arg3);
-
+*/
 

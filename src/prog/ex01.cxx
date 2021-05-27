@@ -142,7 +142,8 @@ struct transducer: con_t {
     SVC(&r_req)
 
   case 2:
-    CSP_CALL_DIRECT2(square,&value,value)
+    //CSP_CALL_DIRECT2(square,&value,value)
+    return (new(*global->real_time_allocator) square(global))->call(this,&value,value);
 
   case 3:
     pc = 1;
@@ -196,7 +197,7 @@ struct init: con_t {
     SVC(&spawn_req)
  
   case 3:
-    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new hello(global))->call(nullptr))
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(*global->real_time_allocator) hello(global))->call(nullptr))
     SVC(&spawn_req)
 
   case 4:
