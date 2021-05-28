@@ -147,6 +147,8 @@ wait_free_allocator_t::wait_free_allocator_t(allocator_t *a, ::std::vector<mem_r
 
   // allocate ring buffer pointer array 
   ring_buffer_pointers = (wait_free_ring_buffer_t**)(void*)arena_pointer; 
+  ::std::cerr << "ring_buffer_pointers: " << (void*)ring_buffer_pointers<< ::std::endl;
+
   arena_pointer += ring_buffer_pointer_memory;
 
   // allocate and initialise ring buffer objects
@@ -156,10 +158,13 @@ wait_free_allocator_t::wait_free_allocator_t(allocator_t *a, ::std::vector<mem_r
     else {
       // pointer to ring buffer object
       wait_free_ring_buffer_t *ring_buffer_object_pointer = (wait_free_ring_buffer_t*)(void*)arena_pointer;
+      ring_buffer_pointers[k] = ring_buffer_object_pointer;
+      ::std::cerr << "ring_buffer_object["<<k<<"]: " << (void*)ring_buffer_object_pointer<< ::std::endl;
       arena_pointer += sizeof(wait_free_ring_buffer_t);
 
       // pointer to actual ring buffer
       void **ring_buffer_buffer_pointer = (void**)(void*)arena_pointer;
+      ::std::cerr << "ring_buffer_buffer_pointer "<<k<<": " << (void*)ring_buffer_buffer_pointer<< ::std::endl;
       size_t n_entries = calringbuffernentries(nblocks[k]);
       arena_pointer += n_entries * sizeof(void*);
 
