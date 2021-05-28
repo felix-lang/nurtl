@@ -9,14 +9,21 @@
 // TEST CASE
 
 struct hello : con_t {
-  hello(global_t *g) : con_t(g) {}
+  global_t *global;
+
+  hello(global_t *g) : con_t(g), global(g) {}
 
   CSP_CALLDEF_START
   CSP_CALLDEF_MID
   CSP_CALLDEF_END
   CSP_RESUME_START
     ::std::cerr << "Hello World" << ::std::endl;
-    CSP_RETURN
+    //CSP_RETURN
+    {
+      con_t *tmp = caller;
+      destroy(this, sizeof(*this), global->real_time_allocator);
+      return tmp;
+    }
   CSP_RESUME_END
 };
 

@@ -24,10 +24,17 @@ struct wait_free_allocator_t : allocator_t {
   ~wait_free_allocator_t() override { allocator->deallocate(arena, arena_size); }
 
   void *allocate(size_t n_bytes) override { 
+auto rb = ring_buffer_pointers[calblocksize(n_bytes)]; 
+std::cerr << "zzz alloc " << n_bytes << " rb: " << rb << "\n";
+rb->log();
+auto p = rb->pop();
+std::cerr << "zzz p: " << p << "\n";
+return p;
+
     return ring_buffer_pointers[calblocksize(n_bytes)]->pop(); 
   }
   void deallocate(void *memory, size_t bytes) override { 
-   ring_buffer_pointers[calblocksize(bytes)]->push(memory); 
+    ring_buffer_pointers[calblocksize(bytes)]->push(memory); 
   }
 
   // immobile

@@ -31,7 +31,16 @@ struct wait_free_ring_buffer_t {
   ~wait_free_ring_buffer_t() { free(data); }
 
   void push(void *entry) { data[head++ % n_entries] = entry; }
-  void *pop() { return data[head++ % n_entries]; }
+  void *pop() { return data[tail++ % n_entries]; }
+
+  void log() {
+     std::cerr << "wait_free_ring_buffer_t this: " << this << "\n";
+     std::cerr << "head: " << head << ", tail: " << tail << "\n";
+     std::cerr << "n_entries: " << n_entries << "\n";
+     for (size_t i = 0; i < n_entries; i++) {
+       std::cerr << "data[" << i << "]: " << data[i] << "\n";
+     }
+  }
 };
 
 
