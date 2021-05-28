@@ -114,7 +114,12 @@ struct square : con_t {
 
   CSP_RESUME_START
     *pout = inp * inp;
-    CSP_RETURN
+    //CSP_RETURN
+    {
+      con_t *tmp = caller;
+      destroy(this, sizeof(*this), global->real_time_allocator);
+      return tmp;
+    }
   CSP_RESUME_END
 };
 
