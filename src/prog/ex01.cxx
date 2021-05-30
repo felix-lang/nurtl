@@ -21,7 +21,7 @@ struct hello : con_t {
     //CSP_RETURN
     {
       con_t *tmp = caller;
-      destroy(this, sizeof(*this), global->real_time_allocator);
+      delete_concrete_object(this, global->real_time_allocator);
       return tmp;
     }
   CSP_RESUME_END
@@ -117,7 +117,7 @@ struct square : con_t {
     //CSP_RETURN
     {
       con_t *tmp = caller;
-      destroy(this, sizeof(*this), global->real_time_allocator);
+      delete_concrete_object(this, global->real_time_allocator);
       return tmp;
     }
   CSP_RESUME_END
