@@ -5,12 +5,16 @@ struct fibre_t {
   fibre_t *next;
   struct active_set_t *owner;
   union svc_req_t *svc_req; // request
-
+  global_t *global;
   // default DEAD
   //fibre_t() : cc(nullptr), next(nullptr), owner(nullptr) {}
 
   // construct from continuation
-  fibre_t(con_t *ccin, struct active_set_t *owned_by) : cc(ccin), next (nullptr), owner(owned_by), svc_req(nullptr) {}
+  fibre_t(con_t *ccin, struct active_set_t *owned_by, global_t *g) : 
+    cc(ccin), next (nullptr), owner(owned_by), svc_req(nullptr), global(g)
+  {
+    ccin->fibre=this; 
+  }
 
   // immobile
   fibre_t(fibre_t const&)=delete;

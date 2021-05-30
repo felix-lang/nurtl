@@ -9,9 +9,7 @@
 // TEST CASE
 
 struct hello : con_t {
-  global_t *global;
-
-  hello(global_t *g) : con_t(g), global(g) {}
+  hello(fibre_t *f) : con_t(f) {}
 
   CSP_CALLDEF_START
   CSP_CALLDEF_MID
@@ -21,7 +19,7 @@ struct hello : con_t {
     //CSP_RETURN
     {
       con_t *tmp = caller;
-      delete_concrete_object(this, global->real_time_allocator);
+      delete_concrete_object(this, fibre->global->real_time_allocator);
       return tmp;
     }
   CSP_RESUME_END
@@ -38,7 +36,7 @@ struct producer : con_t {
   };
   io_request_t w_req;
 
-  producer(global_t *g) : con_t(g) {}
+  producer(fibre_t *f) : con_t(f) {}
   ~producer() { }
 
   CSP_CALLDEF_START,
@@ -73,7 +71,7 @@ struct consumer: con_t {
   io_request_t r_req;
   chan_epref_t inp;
 
-  consumer(global_t *g) : con_t(g) {}
+  consumer(fibre_t *f) : con_t(f) {}
   ~consumer() {}
 
   CSP_CALLDEF_START,
@@ -102,7 +100,7 @@ struct square : con_t {
   int inp;
   int *pout;
 
-  square(global_t *g) : con_t(g) {}
+  square(fibre_t *f) : con_t(f) {}
  
   CSP_CALLDEF_START,
     int *pout_a,
@@ -117,7 +115,7 @@ struct square : con_t {
     //CSP_RETURN
     {
       con_t *tmp = caller;
-      delete_concrete_object(this, global->real_time_allocator);
+      delete_concrete_object(this, fibre->global->real_time_allocator);
       return tmp;
     }
   CSP_RESUME_END
@@ -134,7 +132,7 @@ struct transducer: con_t {
   chan_epref_t inp;
   chan_epref_t out;
 
-  transducer(global_t *g) : con_t(g) {}
+  transducer(fibre_t *f) : con_t(f) {}
 
   ~transducer() {}
 
@@ -155,7 +153,7 @@ struct transducer: con_t {
 
   case 2:
     //CSP_CALL_DIRECT2(square,&value,value)
-    return (new(*global->real_time_allocator) square(global))->call(this,&value,value);
+    return (new(*fibre->global->real_time_allocator) square(fibre))->call(this,&value,value);
 
   case 3:
     pc = 1;
@@ -178,7 +176,7 @@ struct init: con_t {
   double waituntil;
   double *pwaituntil;
 
-  init(global_t *g) : con_t(g) {}
+  init(fibre_t *f) : con_t(f) {}
 
   ~init() {}
 
@@ -197,28 +195,28 @@ struct init: con_t {
     ch2out = make_concurrent_channel();
     ch2inp = ch2out->dup();
  
-    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new producer(global))->call(nullptr, inlst, ch1out))
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new producer(nullptr))->call(nullptr, inlst, ch1out))
     SVC(&spawn_req)
  
   case 1:
-    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new transducer(global))->call(nullptr, ch1inp, ch2out))
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new transducer(nullptr))->call(nullptr, ch1inp, ch2out))
     SVC(&spawn_req)
  
   case 2:
-    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new consumer(global))->call(nullptr, outlst,ch2inp))
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new consumer(nullptr))->call(nullptr, outlst,ch2inp))
     SVC(&spawn_req)
  
   case 3:
-    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(*global->real_time_allocator) hello(global))->call(nullptr))
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(*fibre->global->real_time_allocator) hello(nullptr))->call(nullptr))
     SVC(&spawn_req)
 
   case 4:
-    global->system_clock->start();
-    ::std::cerr << "Clock started, time is " << global->system_clock->now() << ::std::endl;
-    clock_connection = global->system_clock->connect();
+    fibre->global->system_clock->start();
+    ::std::cerr << "Clock started, time is " << fibre->global->system_clock->now() << ::std::endl;
+    clock_connection = fibre->global->system_clock->connect();
     ::std::cerr << "Got connection" << ::std::endl;
     {
-      double rightnow = global->system_clock->now();
+      double rightnow = fibre->global->system_clock->now();
       waituntil = rightnow + 12.10;
       ::std::cerr << ::std::fixed << "Wait until" << waituntil << " for " << waituntil - rightnow << " seconds" << ::std::endl;
     }
@@ -263,7 +261,7 @@ int main() {
     global_t *global = new global_t; 
     allocator_t *malloc_free = new malloc_free_allocator_t;
     global->real_time_allocator = new wait_free_allocator_t(malloc_free,reqs);
-    csp_run((new init(global))-> call(nullptr, &inlst, &outlst));
+    csp_run((new init(nullptr))-> call(nullptr, &inlst, &outlst), global);
     delete global->real_time_allocator;
     delete malloc_free;
     delete global;
