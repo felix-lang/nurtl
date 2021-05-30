@@ -24,11 +24,12 @@ extern void csp_run(con_t *init) {
 // scheduler subroutine runs until there is no work to do
 void sync_sched::sync_run(con_t *cc) {
   current = new fibre_t(cc, active_set);
-  if(current) ++active_set->running_thread_count;
+  cc->fibre = current;
+  ++active_set->running_thread_count;
 retry:
   while(current) // while there's work to do 
   {
-    current->cc->svc_req = nullptr; // null out service request
+    current->svc_req = nullptr; // null out service request
     svc_req_t *svc_req = current->run_fibre();
     if(svc_req)  // fibre issued service request
       switch (svc_req->get_code()) 
@@ -90,26 +91,30 @@ rewait:
 
 
 void sync_sched::do_read(io_request_t *req) {
-  req->chan->get()->channel->read(current->cc->svc_req->io_request.pdata, &current);
+  req->chan->get()->channel->read(current->svc_req->io_request.pdata, &current);
 }
 
 void sync_sched::do_write(io_request_t *req) {
- req->chan->get()->channel->write(current->cc->svc_req->io_request.pdata, &current);
+ req->chan->get()->channel->write(current->svc_req->io_request.pdata, &current);
 }
 
 
 void sync_sched::do_spawn_fibre(spawn_fibre_request_t *req) {
 // ::std::cout << "do spawn" << ::std::endl;
-  current->cc->svc_req=nullptr;
+  current->svc_req=nullptr;
   active_set->push(current);
-  current = new fibre_t(req->tospawn, active_set);
+  con_t *cc= req->tospawn;
+  current = new fibre_t(cc, active_set);
+  cc->fibre = current;
 // ::std::cout << "spawned " << current << ::std::endl;
 }
 
 void sync_sched::do_spawn_fibre_deferred(spawn_fibre_request_t *req) {
 // ::std::cout << "do spawn deferred" << ::std::endl;
-  current->cc->svc_req=nullptr;
-  fibre_t *d = new fibre_t(req->tospawn, active_set);
+  current->svc_req=nullptr;
+  con_t *init = req->tospawn;
+  fibre_t *d = new fibre_t(init, active_set);
+  init->fibre = d;
   active_set->push(d);
 // ::std::cout << "spawn deferred " << d << ::std::endl;
 }

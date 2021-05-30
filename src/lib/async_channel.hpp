@@ -49,7 +49,7 @@ struct async_channel_t : concurrent_channel_t {
       ++refcnt;
       unlock();
       *target =
-        *w->cc->svc_req->io_request.pdata; // transfer data
+        *w->svc_req->io_request.pdata; // transfer data
       w->owner->push(w); // onto active list
     }
     else {
@@ -74,7 +74,7 @@ struct async_channel_t : concurrent_channel_t {
     if(r) {
       ++refcnt;
       unlock();
-      *r->cc->svc_req->io_request.pdata = *source;
+      *r->svc_req->io_request.pdata = *source;
 
       if(r->owner == current->owner) {
         current->owner->push(current); // current is writer, pushed onto active list

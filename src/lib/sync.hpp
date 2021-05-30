@@ -88,7 +88,7 @@ struct con_t;
   (xpreq)->tospawn = xcont;
 
 #define SVC(preq)\
-  svc_req = (svc_req_t*)(void*)preq;\
+  fibre->svc_req = (svc_req_t*)(void*)preq;\
   return this;
 
 #define CSP_GOTO(caseno)\

@@ -68,7 +68,7 @@ public:
       // move any alarm requests from channel to priority queue
       while(w) {
         //::std::cerr << "Got sleep request" << ::std::endl;
-        double **ppalarmat = (double**)w->cc->svc_req->io_request.pdata;
+        double **ppalarmat = (double**)w->svc_req->io_request.pdata;
         //::std::cerr << "Address of data word " << ppalarmat << ::std::endl;
         double *palarmat = *ppalarmat;
         //::std::cerr << "data word " << palarmat << ::std::endl;
