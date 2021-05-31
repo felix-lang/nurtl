@@ -5,8 +5,6 @@ test:
 	# CSP TEST
 	clang++ -g -std=c++17 -ferror-limit=1 -O2 -Isrc/lib src/prog/ex01.cxx -o ex01
 	./ex01
-	clang++ -std=c++17 -ferror-limit=1 -O2 -Isrc/lib src/prog/ex02.cxx -o ex02
-	./ex02
 
 docs:
 	sh texify.sh csp_theory

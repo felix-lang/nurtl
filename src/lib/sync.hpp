@@ -16,11 +16,14 @@ struct fibre_t;
 struct channel_t;
 struct active_set_t;
 struct con_t;
+struct allocator_t;
+struct system_t;
 
 #include "allocator.hpp"
 #include "malloc_free_allocator.hpp"
 #include "wait_free_ring_buffer.hpp"
 #include "wait_free_allocator.hpp"
+#include "system.hpp"
 
 #include "con.hpp"
 #include "fibre.hpp"

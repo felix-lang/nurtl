@@ -2,11 +2,12 @@
 
 // scheduler
 struct sync_sched {
+  system_t *system;
   fibre_t *current; // currently running fibre, nullptr if none
   active_set_t *active_set;  // chain of fibres ready to run
   ~sync_sched() { active_set->forget(); }
 
-  sync_sched(active_set_t *a) : current(nullptr), active_set(a) {}
+  sync_sched(system_t *s, active_set_t *a) : system(s), current(nullptr), active_set(a) {}
 
   void sync_run(con_t *, global_t *global);
   void do_read(io_request_t *req);
@@ -17,8 +18,8 @@ struct sync_sched {
   void do_spawn_cothread(spawn_fibre_request_t *req, global_t *global);
 };
 
-extern void csp_run(con_t *init, global_t *global) {
-  sync_sched (new active_set_t).sync_run(init, global);
+extern void csp_run(system_t *system, global_t *global, con_t *init) {
+  sync_sched (system, new active_set_t).sync_run(init, global);
 }
 
 // scheduler subroutine runs until there is no work to do
@@ -119,16 +120,16 @@ void sync_sched::do_spawn_fibre_deferred(spawn_fibre_request_t *req, global_t *g
 // ::std::cout << "spawn deferred " << d << ::std::endl;
 }
 
-static void spawn(active_set_t *pa, con_t *cc, global_t *global) {
-  sync_sched(pa).sync_run(cc, global);
+static void spawn(system_t *system, active_set_t *pa, con_t *cc, global_t *global) {
+  sync_sched(system, pa).sync_run(cc, global);
 }
 void sync_sched::do_spawn_pthread(spawn_fibre_request_t *req, global_t *global) {
-  ::std::thread(spawn,new active_set_t,req->tospawn, global).detach();
+  ::std::thread(spawn,system,new active_set_t,req->tospawn, global).detach();
 }
 
 void sync_sched::do_spawn_cothread(spawn_fibre_request_t *req, global_t *global) {
   current->owner->refcnt++;
-  ::std::thread(spawn,current->owner,req->tospawn, global).detach();
+  ::std::thread(spawn,system,current->owner,req->tospawn, global).detach();
 }
 
 

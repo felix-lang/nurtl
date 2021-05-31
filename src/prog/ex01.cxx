@@ -261,9 +261,11 @@ int main() {
     global_t *global = new global_t; 
     allocator_t *malloc_free = new malloc_free_allocator_t;
     global->real_time_allocator = new wait_free_allocator_t(malloc_free,reqs);
-    csp_run((new init(nullptr))-> call(nullptr, &inlst, &outlst), global);
+    system_t *system = new system_t(global->real_time_allocator);
+    csp_run(system, global, (new init(nullptr))-> call(nullptr, &inlst, &outlst));
     delete global->real_time_allocator;
     delete malloc_free;
+    delete system;
     delete global;
   }
 
