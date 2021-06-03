@@ -190,9 +190,9 @@ struct init: con_t {
   CSP_CALLDEF_END
 
   CSP_RESUME_START
-    ch1out = make_concurrent_channel();
+    ch1out = make_concurrent_channel(fibre->global->system_allocator);
     ch1inp = ch1out->dup(); 
-    ch2out = make_concurrent_channel();
+    ch2out = make_concurrent_channel(fibre->global->system_allocator);
     ch2inp = ch2out->dup();
  
     SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new producer(nullptr))->call(nullptr, inlst, ch1out))

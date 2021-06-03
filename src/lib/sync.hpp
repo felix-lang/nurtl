@@ -18,6 +18,8 @@ struct active_set_t;
 struct con_t;
 struct allocator_t;
 struct system_t;
+struct channel_endpoint_t;
+struct chan_epref_t;
 
 #include "allocator.hpp"
 #include "malloc_free_allocator.hpp"

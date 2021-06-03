@@ -5,6 +5,7 @@ struct sequential_channel_t : channel_t {
   
   sequential_channel_t () : channel_t() {}
 
+  size_t size() const override { return sizeof(sequential_channel_t); }
   void push_reader(fibre_t *r) override { st_push_reader(r); } 
   void push_writer(fibre_t *w) override  { st_push_writer(w); }
   fibre_t *pop_reader() override  { return st_pop_reader(); }
@@ -64,7 +65,7 @@ struct sequential_channel_t : channel_t {
 
 };
 
-chan_epref_t make_sequential_channel() {
-  return ::std::make_shared<channel_endpoint_t>(new sequential_channel_t);
+chan_epref_t make_sequantial_channel(allocator_t *a) {
+  return acquire_channel(a, new(*a) sequential_channel_t);
 }
 

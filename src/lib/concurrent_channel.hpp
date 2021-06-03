@@ -7,6 +7,8 @@ struct concurrent_channel_t : sequential_channel_t {
 
   concurrent_channel_t () : lk(false) {}
 
+  size_t size() const override { return sizeof(concurrent_channel_t); }
+
   void push_reader(fibre_t *r) override { 
     lock();
     st_push_reader(r); 
@@ -86,7 +88,7 @@ struct concurrent_channel_t : sequential_channel_t {
 
 };
 
-chan_epref_t make_concurrent_channel() {
-  return ::std::make_shared<channel_endpoint_t>(new concurrent_channel_t);
+chan_epref_t make_concurrent_channel(allocator_t *a) {
+  return acquire_channel(a, new(*a) concurrent_channel_t);
 }
 

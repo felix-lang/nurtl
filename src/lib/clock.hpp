@@ -20,6 +20,7 @@ void run_service(csp_clock_t *p);
 struct csp_clock_t {
   async_channel_t *chan;
   chan_epref_t chanepr;
+  allocator_t* allocator;
 
   ::std::priority_queue<pqreq_t> q;
 
@@ -32,9 +33,9 @@ struct csp_clock_t {
     return (::std::chrono::duration<double> (d)).count();
   }
 
-  csp_clock_t () : run(false) { 
+  csp_clock_t (allocator_t *a) : allocator(a), run(false) { 
     chan = new async_channel_t;
-    chanepr = acquire_async_channel(chan); 
+    chanepr = acquire_channel(allocator, chan); 
     start(); 
   }
   ~csp_clock_t() { 
@@ -147,6 +148,6 @@ void run_service(csp_clock_t *p) { p->service(); }
 
 // makes a clock and starts it running
 // the clock dies when the last reference is lost
-::std::shared_ptr<csp_clock_t> make_clock() { 
-  return ::std::make_shared<csp_clock_t>();
+::std::shared_ptr<csp_clock_t> make_clock(allocator_t *a) { 
+  return ::std::make_shared<csp_clock_t>(a);
 }

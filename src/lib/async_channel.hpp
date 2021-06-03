@@ -37,6 +37,7 @@ struct async_channel_t : concurrent_channel_t {
   ::std::mutex cv_lock;
 
   void signal() override { cv.notify_all(); }
+  size_t size() const override { return sizeof(async_channel_t); }
 
   async_channel_t () {}
 
@@ -101,10 +102,7 @@ struct async_channel_t : concurrent_channel_t {
 
 };
 
-chan_epref_t acquire_async_channel(async_channel_t *p) {
-  return ::std::make_shared<channel_endpoint_t>(p);
-}
-chan_epref_t make_async_channel() {
-  return acquire_async_channel(new async_channel_t);
+chan_epref_t make_async_channel(allocator_t *a) {
+  return acquire_channel(a, new async_channel_t);
 }
 

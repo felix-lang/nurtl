@@ -11,9 +11,6 @@ enum svc_code_t {
   spawn_cothread_request_code_e
 };
 
-struct channel_endpoint_t;
-using chan_epref_t = ::std::shared_ptr<channel_endpoint_t>;
-
 // synchronous I/O requests
 struct io_request_t {
   svc_code_t svc_code;

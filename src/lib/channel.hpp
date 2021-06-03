@@ -22,6 +22,9 @@ struct channel_t {
   channel_t(channel_t const&)=delete;
   channel_t& operator= (channel_t const&)=delete;
 
+  // required for the polymorphic deleter
+  virtual size_t size() const = 0;
+
   // push a fibre as a reader: precondition it must be a reader
   // and, if the channel is non-empty it must contain only readers
   virtual void push_reader(fibre_t *r)=0;
@@ -74,9 +77,61 @@ protected:
 
 };
 
+struct chan_epref_t {
+  channel_endpoint_t *endpoint;
+  chan_epref_t(channel_endpoint_t *p) : endpoint(p) {} // endpoint ctor sets refcnt to 1 initially
+
+  channel_endpoint_t *operator->()const { return endpoint; }
+  channel_endpoint_t *get() const { return endpoint; }
+
+  chan_epref_t() : endpoint(nullptr) {}
+
+  // rvalue move
+  chan_epref_t(chan_epref_t &&p) {
+    if(p.endpoint) { 
+      endpoint = p.endpoint; 
+      p.endpoint = nullptr; 
+    }
+    else endpoint = nullptr;
+  } 
+
+  // lvalue copy
+  chan_epref_t(chan_epref_t &p);
+
+  // rvalue assign
+  void operator= (chan_epref_t &&p) {
+    if (&p!=this) { // ignore self assign
+      this->~chan_epref_t(); // destroy target
+      new(this) chan_epref_t(::std::move(p)); // move source to target
+    }
+  } // rass
+
+  // lvalue assign
+  void operator= (chan_epref_t &p) { 
+    if(&p!=this) { // ignore self assign
+      this->~chan_epref_t(); // destroy target
+      new(this) chan_epref_t(p); // copy source to target
+    }
+  } // lass
+ 
+ 
+  // destructor
+  // uses allocator passed to endpoint on construction to delete it
+  ~chan_epref_t();
+};
+
+
+// the allocator used to construct the endpoint
+// must be passed to it so it can be used to delete it
+// it MUST be the same allocator used to construct the channel
+// try to FIXME so it is .. this requires storing the allocator in
+// the channel OR ensuring all channels and endpoints are constructed
+// using the system allocator
 struct channel_endpoint_t {
+  size_t refcnt;
   channel_t *channel;
-  channel_endpoint_t(channel_t *p) : channel(p) { ++channel->refcnt; }
+  allocator_t *allocator;
+  channel_endpoint_t(channel_t *p, allocator_t *a) : allocator(a), channel(p), refcnt(1) { ++channel->refcnt; }
 
   // immobile object
   channel_endpoint_t(channel_endpoint_t const&)=delete;
@@ -84,13 +139,13 @@ struct channel_endpoint_t {
 
   // create a duplicate of the current endpoint refering
   // to the same channel. Returns a chan_epref_t; a shared
-  // pointer to the new endpoint. Increments the counter
+  // pointer to the new endpoint. Incredrummoyne@corleonemarinas.comments the counter
   // of endpoints in the channel.
   // note, C++ must construct a single object containing
   // both the reference count and the channel endpoint.
 
-  ::std::shared_ptr<channel_endpoint_t> dup() const { 
-    return ::std::make_shared<channel_endpoint_t>(channel);
+  chan_epref_t dup() const { 
+    return chan_epref_t(new(*allocator) channel_endpoint_t(channel, allocator));
   }
 
   ~channel_endpoint_t () {
@@ -110,10 +165,32 @@ struct channel_endpoint_t {
     while (top) {
       fibre_t *f = (fibre_t*)clear_lowbit(top);
       fibre_t *tmp = f->next;
-      delete f;
+      delete_concrete_object(f, allocator);
       top = tmp;
     }
   }
   
 };
+
+
+// lvalue copy
+chan_epref_t::chan_epref_t(chan_epref_t &p) { 
+  if(p.endpoint) { endpoint = p.endpoint; p.endpoint->refcnt++; }
+  else endpoint = nullptr; 
+} 
+
+// destructor
+// uses allocator passed to endpoint on construction to delete it
+chan_epref_t::~chan_epref_t() { 
+  if (endpoint) {
+    if(endpoint->refcnt == 1) 
+      delete_concrete_object(endpoint, endpoint->allocator); 
+    else 
+      --endpoint->refcnt; 
+  }
+} // dtor
+
+chan_epref_t acquire_channel(allocator_t *a, channel_t *p) {
+  return chan_epref_t(new(*a) channel_endpoint_t(p,a));
+}
 
