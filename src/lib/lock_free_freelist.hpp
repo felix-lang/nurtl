@@ -16,11 +16,17 @@ struct stack
     // is no longer what's stored in new_node->next
     // (some other thread must have inserted a node just now)
     // then put that new head into new_node->next and try again
-    while(!head.compare_exchange_weak ( new_node->next, new_node);
+    while(!head.compare_exchange_weak (new_node->next, new_node)) ;
   }
   node_t *pop() 
   {
-    
+    node_t *tmp;
+
+    do {
+      tmp = head.load(std::memory_order_relaxed); 
+    } while(!head.compare_exchange_weak(tmp, tmp->next));
+
+    return tmp;
   }
 
 };
