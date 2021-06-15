@@ -9,7 +9,8 @@ struct mem_req_t {
 // given a memory block size of n bytes,
 // calculate the smallest legitimate allocation
 // amount which can contain n bytes
-
+//
+// currently we just round up to a multiple of 8
 static size_t calblocksize(size_t n) {
   return n % 8 == 0 ? n : (n / 8 + 1) * 8;
 }
@@ -137,13 +138,13 @@ system_allocator_t::system_allocator_t(allocator_t *a, ::std::vector<mem_req_t> 
       ::std::cerr << "freelist_object["<<k<<"]: " << (void*)freelist_object_pointer<< ::std::endl;
       arena_pointer += sizeof(freelist_t);
 
-      // pointer to actual ring buffer
+      // pointer to actual freelist 
       void **freelist_stack_top = (void**)(void*)arena_pointer;
       ::std::cerr << "freelist_stack_top "<<k<<": " << (void*)freelist_stack_top<< ::std::endl;
       size_t n_entries = nblocks[k];
       arena_pointer += n_entries * sizeof(void*);
 
-      // initialise ring buffer object
+      // initialise freelist object
       new(freelist_object_pointer) freelist_t (n_entries, freelist_stack_top);
 
       // allocate the client storage
