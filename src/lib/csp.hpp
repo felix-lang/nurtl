@@ -32,7 +32,7 @@ struct chan_epref_t;
 #include "svc.hpp"
 #include "channel.hpp"
 #include "active_set.hpp"
-#include "sync_sched.hpp"
+#include "csp_thread.hpp"
 #include "sequential_channel.hpp"
 #include "concurrent_channel.hpp"
 #include "async_channel.hpp"
