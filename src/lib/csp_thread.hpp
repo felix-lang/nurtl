@@ -2,31 +2,31 @@
 
 // scheduler
 struct csp_thread_t {
-  system_t *system;
+  csp_process_t *process;  // chain of fibres ready to run
+
   fibre_t *current; // currently running fibre, nullptr if none
-  active_set_t *active_set;  // chain of fibres ready to run
-  ~csp_thread_t() { active_set->forget(); }
+  ~csp_thread_t() { process->forget(); }
 
-  csp_thread_t(system_t *s, active_set_t *a) : system(s), current(nullptr), active_set(a) {}
+  csp_thread_t(csp_process_t *a) : current(nullptr), process(a) {}
 
-  void sync_run(con_t *, global_t *global);
+  void sync_run(con_t *);
   void do_read(io_request_t *req);
   void do_write(io_request_t *req);
-  void do_spawn_fibre(spawn_fibre_request_t *req, global_t *global);
-  void do_spawn_fibre_deferred(spawn_fibre_request_t *req, global_t *global);
-  void do_spawn_pthread(spawn_fibre_request_t *req, global_t *global);
-  void do_spawn_cothread(spawn_fibre_request_t *req, global_t *global);
+  void do_spawn_fibre(spawn_fibre_request_t *req);
+  void do_spawn_fibre_deferred(spawn_fibre_request_t *req);
+  void do_spawn_process(spawn_process_request_t *req);
+  void do_spawn_cothread(spawn_fibre_request_t *req);
 };
 
-extern void csp_run(system_t *system, global_t *global, con_t *init) {
-  csp_thread_t (system, new active_set_t).sync_run(init, global);
+extern void csp_run(system_t *system, allocator_t *process_allocator, con_t *init) {
+  csp_thread_t (new(*system->system_allocator) csp_process_t(system, process_allocator)).sync_run(init);
 }
 
 // scheduler subroutine runs until there is no work to do
-void csp_thread_t::sync_run(con_t *cc, global_t *global) {
-  current = new fibre_t(cc, active_set, global);
+void csp_thread_t::sync_run(con_t *cc) {
+  current = new(*process->process_allocator) fibre_t(cc, process);
   cc->fibre = current;
-  ++active_set->running_thread_count;
+  ++process->running_thread_count;
 retry:
   while(current) // while there's work to do 
   {
@@ -42,16 +42,16 @@ retry:
           do_write(&(svc_req->io_request));
           break;
         case spawn_fibre_request_code_e:  
-          do_spawn_fibre(&(svc_req->spawn_fibre_request), current->global);
+          do_spawn_fibre(&(svc_req->spawn_fibre_request));
           break;
         case spawn_fibre_deferred_request_code_e:  
-          do_spawn_fibre_deferred(&(svc_req->spawn_fibre_request), current->global);
+          do_spawn_fibre_deferred(&(svc_req->spawn_fibre_request));
           break;
-        case spawn_pthread_request_code_e:  
-          do_spawn_pthread(&(svc_req->spawn_fibre_request), current->global);
+        case spawn_process_request_code_e:  
+          do_spawn_process(&(svc_req->spawn_process_request));
           break;
         case spawn_cothread_request_code_e:  
-          do_spawn_cothread(&(svc_req->spawn_fibre_request), current->global);
+          do_spawn_cothread(&(svc_req->spawn_fibre_request));
           break;
         default:
           assert(false);
@@ -60,28 +60,28 @@ retry:
     {
       assert(!current->cc); // check it's adead fibre
       delete current;       // delete dead fibre
-      current = active_set->pop();      // get more work
+      current = process->pop();      // get more work
     }
   }
 
   // decrement running thread count
-  active_set->running_thread_count--;
+  process->running_thread_count--;
 
   // Async events can reload the active set, but they do NOT change current
 rewait:
   // if the async count > 0 we're waiting for the async op to complete
   // if the running thread count > 0 we're waiting for other threads to stall
-  ::std::cerr << "Scheduler out of fibres: async count = " << active_set->async_count.load() << ::std::endl;
-  if(active_set->async_count.load() > 0 || active_set->running_thread_count.load() > 0) {
+  ::std::cerr << "Scheduler out of fibres: async count = " << process->async_count.load() << ::std::endl;
+  if(process->async_count.load() > 0 || process->running_thread_count.load() > 0) {
     // delay
     {
 ::std::cerr << "Scheduler sleeping (inf)" << ::std::endl;
-      ::std::unique_lock<::std::mutex> lk(active_set->async_lock);
-      active_set->async_wake.wait_for(lk,::std::chrono::milliseconds(100000));
+      ::std::unique_lock<::std::mutex> lk(process->async_lock);
+      process->async_wake.wait_for(lk,::std::chrono::milliseconds(100000));
     } // lock released now
-    current = active_set->pop();      // get more work
+    current = process->pop();      // get more work
     if(current) {
-      active_set->running_thread_count++;
+      process->running_thread_count++;
       goto retry;
     }
     goto rewait;
@@ -100,36 +100,37 @@ void csp_thread_t::do_write(io_request_t *req) {
 }
 
 
-void csp_thread_t::do_spawn_fibre(spawn_fibre_request_t *req, global_t *global) {
+void csp_thread_t::do_spawn_fibre(spawn_fibre_request_t *req) {
 // ::std::cout << "do spawn" << ::std::endl;
   current->svc_req=nullptr;
-  active_set->push(current);
+  process->push(current);
   con_t *cc= req->tospawn;
-  current = new fibre_t(cc, active_set, global);
+  current = new(*process->process_allocator) fibre_t(cc, process);
   cc->fibre = current;
 // ::std::cout << "spawned " << current << ::std::endl;
 }
 
-void csp_thread_t::do_spawn_fibre_deferred(spawn_fibre_request_t *req, global_t *global) {
+void csp_thread_t::do_spawn_fibre_deferred(spawn_fibre_request_t *req) {
 // ::std::cout << "do spawn deferred" << ::std::endl;
   current->svc_req=nullptr;
   con_t *init = req->tospawn;
-  fibre_t *d = new fibre_t(init, active_set, global);
+  fibre_t *d = new(*process->process_allocator) fibre_t(init, process);
   init->fibre = d;
-  active_set->push(d);
+  process->push(d);
 // ::std::cout << "spawn deferred " << d << ::std::endl;
 }
 
-static void spawn(system_t *system, active_set_t *pa, con_t *cc, global_t *global) {
-  csp_thread_t(system, pa).sync_run(cc, global);
+static void spawn(csp_process_t *pa, con_t *cc) {
+  csp_thread_t(pa).sync_run(cc);
 }
-void csp_thread_t::do_spawn_pthread(spawn_fibre_request_t *req, global_t *global) {
-  ::std::thread(spawn,system,new active_set_t,req->tospawn, global).detach();
+void csp_thread_t::do_spawn_process(spawn_process_request_t *req) {
+  csp_process_t *process = new(*process->system->system_allocator) csp_process_t(process->system, req->process_allocator);
+  ::std::thread(spawn,process,req->tospawn).detach();
 }
 
-void csp_thread_t::do_spawn_cothread(spawn_fibre_request_t *req, global_t *global) {
-  current->owner->refcnt++;
-  ::std::thread(spawn,system,current->owner,req->tospawn, global).detach();
+void csp_thread_t::do_spawn_cothread(spawn_fibre_request_t *req) {
+  current->process->refcnt++;
+  ::std::thread(spawn,current->process,req->tospawn).detach();
 }
 
 

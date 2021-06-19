@@ -49,8 +49,8 @@ private:
   // puts f back on its active set after timeout
   void activate_fibre(fibre_t *f) {
     //::std::cerr << "Wake fibre" << ::std::endl;
-    f->owner->push(f);
-    f->owner->async_complete(); // dec async_count and signal scheduler
+    f->process->push(f);
+    f->process->async_complete(); // dec async_count and signal scheduler
   }
 
 public:

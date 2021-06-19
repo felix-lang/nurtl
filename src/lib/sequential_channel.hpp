@@ -20,7 +20,7 @@ struct sequential_channel_t : channel_t {
       ++refcnt;
       *target =
         *w->svc_req->io_request.pdata; // transfer data
-      w->owner->push(w); // onto active list
+      w->process->push(w); // onto active list
     }
     else {
       if(refcnt == 1) {
@@ -29,7 +29,7 @@ struct sequential_channel_t : channel_t {
         --refcnt;
         st_push_reader(current);
       }
-      *pcurrent = current->owner->pop(); // active list
+      *pcurrent = current->process->pop(); // active list
     }
   }
 
@@ -40,12 +40,12 @@ struct sequential_channel_t : channel_t {
       ++refcnt;
       *r->svc_req->io_request.pdata = *source;
 
-      if(r->owner == current->owner) {
-        current->owner->push(current); // current is writer, pushed onto active list
+      if(r->process == current->process) {
+        current->process->push(current); // current is writer, pushed onto active list
         *pcurrent = r; // make reader current
       }
       else {
-        r->owner->push(r);
+        r->process->push(r);
       }
     }
     else {
@@ -55,7 +55,7 @@ struct sequential_channel_t : channel_t {
         --refcnt;
   // ::std::cout<< "do_write: fibre " << current << ", set channel "<< chan <<" recnt to " << chan->refcnt << ::std::endl;
         st_push_writer(current); // i/o fail: push current onto channel
-        *pcurrent = current->owner->pop(); // reset current from active list
+        *pcurrent = current->process->pop(); // reset current from active list
       }
     }
   }

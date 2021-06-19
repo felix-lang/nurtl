@@ -1,6 +1,9 @@
 // active set
-struct active_set_t {
+struct csp_process_t {
   ::std::atomic_size_t refcnt;
+  system_t *system;
+  allocator_t *process_allocator;
+
   fibre_t *active;
   ::std::atomic_flag lock; // this one is a spin lock for sync ops
 
@@ -20,11 +23,14 @@ struct active_set_t {
 
   ::std::atomic_size_t running_thread_count;
 
-  active_set_t() : refcnt(1), active(nullptr), async_count(0), lock(false), running_thread_count(0) { 
-    // ::std::cout << "New active set" << ::std::endl;
+  csp_process_t(system_t *s, allocator_t *a) : 
+    system(s), process_allocator(a),
+    refcnt(1), active(nullptr), async_count(0), lock(false), running_thread_count(0) 
+  { 
+    // ::std::cout << "New process" << ::std::endl;
   }
 
-  active_set_t *share() { ++refcnt; return this; }
+  csp_process_t *share() { ++refcnt; return this; }
   void forget() { --refcnt; if(!atomic_load(&refcnt)) delete this; }
 
   // push a new active fibre onto active list

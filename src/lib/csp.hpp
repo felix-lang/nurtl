@@ -1,3 +1,4 @@
+// C++ resources
 #include <cstdint>
 #include <cassert>
 #include <cstdio>
@@ -10,17 +11,18 @@
 #include <iostream>
 
 
-struct global_t;
+// forward decls
 struct csp_clock_t;
 struct fibre_t;
 struct channel_t;
-struct active_set_t;
+struct csp_process_t;
 struct con_t;
 struct allocator_t;
 struct system_t;
 struct channel_endpoint_t;
 struct chan_epref_t;
 
+// the csp system
 #include "allocator.hpp"
 #include "malloc_free_allocator.hpp"
 #include "freelist.hpp"
@@ -31,7 +33,7 @@ struct chan_epref_t;
 #include "fibre.hpp"
 #include "svc.hpp"
 #include "channel.hpp"
-#include "active_set.hpp"
+#include "csp_process.hpp"
 #include "csp_thread.hpp"
 #include "sequential_channel.hpp"
 #include "concurrent_channel.hpp"

@@ -43,7 +43,7 @@ struct async_channel_t : concurrent_channel_t {
 
   void read(void **target, fibre_t **pcurrent)  override {
     fibre_t *current = *pcurrent;
-    ++current->owner->async_count;
+    ++current->process->async_count;
     lock();
     fibre_t *w = st_pop_writer();
     if(w) {
@@ -51,7 +51,7 @@ struct async_channel_t : concurrent_channel_t {
       unlock();
       *target =
         *w->svc_req->io_request.pdata; // transfer data
-      w->owner->push(w); // onto active list
+      w->process->push(w); // onto active list
     }
     else {
       if(refcnt == 1) {
@@ -62,14 +62,14 @@ struct async_channel_t : concurrent_channel_t {
         st_push_reader(current);
         unlock();
       }
-      *pcurrent = current->owner->pop(); // active list
+      *pcurrent = current->process->pop(); // active list
     }
     signal();
   }
 
   void write(void **source, fibre_t **pcurrent) override  {
     fibre_t *current = *pcurrent;
-    ++current->owner->async_count;
+    ++current->process->async_count;
     lock();
     fibre_t *r = st_pop_reader();
     if(r) {
@@ -77,12 +77,12 @@ struct async_channel_t : concurrent_channel_t {
       unlock();
       *r->svc_req->io_request.pdata = *source;
 
-      if(r->owner == current->owner) {
-        current->owner->push(current); // current is writer, pushed onto active list
+      if(r->process == current->process) {
+        current->process->push(current); // current is writer, pushed onto active list
         *pcurrent = r; // make reader current
       }
       else {
-        r->owner->push(r);
+        r->process->push(r);
       }
     }
     else {
@@ -93,7 +93,7 @@ struct async_channel_t : concurrent_channel_t {
         --refcnt;
         st_push_writer(current); // i/o fail: push current onto channel
         unlock();
-        *pcurrent = current->owner->pop(); // reset current from active list
+        *pcurrent = current->process->pop(); // reset current from active list
       }
     }
     signal();

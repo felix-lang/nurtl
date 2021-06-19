@@ -4,7 +4,6 @@
 
 
 #include "csp.hpp"
-#include "global.hpp"
 
 // TEST CASE
 
@@ -19,7 +18,7 @@ struct hello : con_t {
     //CSP_RETURN
     {
       con_t *tmp = caller;
-      delete_concrete_object(this, fibre->global->real_time_allocator);
+      delete_concrete_object(this, fibre->process->process_allocator);
       return tmp;
     }
   CSP_RESUME_END
@@ -115,7 +114,7 @@ struct square : con_t {
     //CSP_RETURN
     {
       con_t *tmp = caller;
-      delete_concrete_object(this, fibre->global->real_time_allocator);
+      delete_concrete_object(this, fibre->process->process_allocator);
       return tmp;
     }
   CSP_RESUME_END
@@ -153,7 +152,7 @@ struct transducer: con_t {
 
   case 2:
     //CSP_CALL_DIRECT2(square,&value,value)
-    return (new(*fibre->global->real_time_allocator) square(fibre))->call(this,&value,value);
+    return (new(*fibre->process->process_allocator) square(fibre))->call(this,&value,value);
 
   case 3:
     pc = 1;
@@ -190,41 +189,44 @@ struct init: con_t {
   CSP_CALLDEF_END
 
   CSP_RESUME_START
-    ch1out = make_concurrent_channel(fibre->global->system_allocator);
+    ch1out = make_concurrent_channel(fibre->process->system->system_allocator);
     ch1inp = ch1out->dup(); 
-    ch2out = make_concurrent_channel(fibre->global->system_allocator);
+    ch2out = make_concurrent_channel(fibre->process->system->system_allocator);
     ch2inp = ch2out->dup();
  
-    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new producer(nullptr))->call(nullptr, inlst, ch1out))
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(*fibre->process->process_allocator) producer(nullptr))->call(nullptr, inlst, ch1out))
     SVC(&spawn_req)
  
   case 1:
-    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new transducer(nullptr))->call(nullptr, ch1inp, ch2out))
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(*fibre->process->process_allocator) transducer(nullptr))->call(nullptr, ch1inp, ch2out))
     SVC(&spawn_req)
  
   case 2:
-    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new consumer(nullptr))->call(nullptr, outlst,ch2inp))
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(*fibre->process->process_allocator) consumer(nullptr))->call(nullptr, outlst,ch2inp))
     SVC(&spawn_req)
  
   case 3:
-    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(*fibre->global->real_time_allocator) hello(nullptr))->call(nullptr))
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(*fibre->process->process_allocator) hello(nullptr))->call(nullptr))
     SVC(&spawn_req)
 
   case 4:
-    fibre->global->system_clock->start();
-    ::std::cerr << "Clock started, time is " << fibre->global->system_clock->now() << ::std::endl;
-    clock_connection = fibre->global->system_clock->connect();
-    ::std::cerr << "Got connection" << ::std::endl;
-    {
-      double rightnow = fibre->global->system_clock->now();
-      waituntil = rightnow + 12.10;
-      ::std::cerr << ::std::fixed << "Wait until" << waituntil << " for " << waituntil - rightnow << " seconds" << ::std::endl;
+    { 
+      ::std::shared_ptr<csp_clock_t> clock = make_clock(fibre->process->system->system_allocator);
+       clock->start();
+      ::std::cerr << "Clock started, time is " << clock->now() << ::std::endl;
+      clock_connection = clock->connect();
+      ::std::cerr << "Got connection" << ::std::endl;
+      {
+        double rightnow = clock->now();
+        waituntil = rightnow + 12.10;
+        ::std::cerr << ::std::fixed << "Wait until" << waituntil << " for " << waituntil - rightnow << " seconds" << ::std::endl;
+      }
+      ::std::cerr << "Alarm time " << waituntil << ", stored at " << &waituntil
+        << "=" << pwaituntil << " which is stored at " << &pwaituntil << ::std::endl;
+      pwaituntil = &waituntil;
+      SVC_WRITE_REQ(&clock_req,&clock_connection,&pwaituntil);
+      ::std::cerr<<"****** INIT Sleeping ********" << ::std::endl;
     }
-    ::std::cerr << "Alarm time " << waituntil << ", stored at " << &waituntil
-      << "=" << pwaituntil << " which is stored at " << &pwaituntil << ::std::endl;
-    pwaituntil = &waituntil;
-    SVC_WRITE_REQ(&clock_req,&clock_connection,&pwaituntil);
-    ::std::cerr<<"****** INIT Sleeping ********" << ::std::endl;
 // too early to signal
 // need different kind of channel w. cv
     SVC(&clock_req)
@@ -258,15 +260,26 @@ int main() {
     reqs.push_back(mem_req_t {sizeof(square),50});
  
 
-    global_t *global = new global_t; 
+    // bootstrap allocator
     allocator_t *malloc_free = new malloc_free_allocator_t;
-    global->real_time_allocator = new system_allocator_t(malloc_free,reqs);
-    system_t *system = new system_t(global->real_time_allocator);
-    csp_run(system, global, (new init(nullptr))-> call(nullptr, &inlst, &outlst));
-    delete global->real_time_allocator;
+
+    // system allocator
+    allocator_t *system_allocator = new system_allocator_t(malloc_free,reqs);
+
+    // initial process will use the system allocator
+    allocator_t *process_allocator = system_allocator;
+
+    // creates the clock too
+    system_t *system = new system_t(system_allocator);
+
+    csp_run(system, process_allocator, (new init(nullptr))-> call(nullptr, &inlst, &outlst));
+
+    // delete the allocators
+    delete system_allocator;
     delete malloc_free;
+
+    // and the system object
     delete system;
-    delete global;
   }
 
   // the result is now in the outlist so print it

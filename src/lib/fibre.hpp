@@ -3,15 +3,15 @@
 struct fibre_t {
   con_t *cc;
   fibre_t *next;
-  struct active_set_t *owner;
+  csp_process_t *process;
   union svc_req_t *svc_req; // request
-  global_t *global;
+
   // default DEAD
-  //fibre_t() : cc(nullptr), next(nullptr), owner(nullptr) {}
+  //fibre_t() : cc(nullptr), next(nullptr), process(nullptr) {}
 
   // construct from continuation
-  fibre_t(con_t *ccin, struct active_set_t *owned_by, global_t *g) : 
-    cc(ccin), next (nullptr), owner(owned_by), svc_req(nullptr), global(g)
+  fibre_t(con_t *ccin, csp_process_t *owned_by) : 
+    cc(ccin), next (nullptr), process(owned_by), svc_req(nullptr)
   {
     ccin->fibre=this; 
   }
