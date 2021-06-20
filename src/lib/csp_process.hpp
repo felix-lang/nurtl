@@ -17,7 +17,7 @@ struct csp_process_t {
   ::std::condition_variable async_wake;
 
   void async_complete() { 
-    ::std::cout << "Active set: async complete" << ::std::endl;
+    //::std::cout << "Active set: async complete" << ::std::endl;
     --async_count; async_wake.notify_all(); 
   }
 

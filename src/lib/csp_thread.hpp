@@ -71,11 +71,11 @@ retry:
 rewait:
   // if the async count > 0 we're waiting for the async op to complete
   // if the running thread count > 0 we're waiting for other threads to stall
-  ::std::cerr << "Scheduler out of fibres: async count = " << process->async_count.load() << ::std::endl;
+//  ::std::cerr << "Scheduler out of fibres: async count = " << process->async_count.load() << ::std::endl;
   if(process->async_count.load() > 0 || process->running_thread_count.load() > 0) {
     // delay
     {
-::std::cerr << "Scheduler sleeping (inf)" << ::std::endl;
+//::std::cerr << "Scheduler sleeping (inf)" << ::std::endl;
       ::std::unique_lock<::std::mutex> lk(process->async_lock);
       process->async_wake.wait_for(lk,::std::chrono::milliseconds(100000));
     } // lock released now
@@ -87,7 +87,7 @@ rewait:
     goto rewait;
   }
 
-  ::std::cerr << "Scheduler out of work, returning" << ::std::endl;
+//  ::std::cerr << "Scheduler out of work, returning" << ::std::endl;
 }
 
 

@@ -79,7 +79,7 @@ system_allocator_t::system_allocator_t(allocator_t *a, ::std::vector<mem_req_t> 
   // find the largest block requested
   size_t max_block_size = 0;
   for(auto req: reqs) max_block_size = ::std::max(req.block_size, max_block_size);
-  ::std::cerr << "max_block_size " << max_block_size << ::std::endl;
+//  ::std::cerr << "max_block_size " << max_block_size << ::std::endl;
 
   // make an array mapping block size to request count
   ::std::vector<size_t> nblocks;
@@ -88,45 +88,45 @@ system_allocator_t::system_allocator_t(allocator_t *a, ::std::vector<mem_req_t> 
   for (auto req: reqs) 
     nblocks[calblocksize(req.block_size)] += req.n_blocks;
   
-  ::std::cerr << "nblocks array: " << ::std::endl;
-  for(size_t k = 0; k<= max_block_size; ++k)
-    if(nblocks[k])
-      ::std::cerr << "  " << k  << ": " << nblocks[k] << ::std::endl;
+//  ::std::cerr << "nblocks array: " << ::std::endl;
+//  for(size_t k = 0; k<= max_block_size; ++k)
+//    if(nblocks[k])
+//      ::std::cerr << "  " << k  << ": " << nblocks[k] << ::std::endl;
 
   // find user memory requirement
   size_t user_memory = 0;
   for (size_t i = 0; i <= max_block_size; ++i) 
     user_memory += i * nblocks[i]; 
-  ::std::cerr << "user_memory: " << user_memory << ::std::endl;
+//  ::std::cerr << "user_memory: " << user_memory << ::std::endl;
 
   // calculate the store required for freelists 
   size_t freelist_memory = 0;
   for (size_t i = 0; i <= max_block_size; ++i) 
     freelist_memory += nblocks[i] * sizeof(void*); 
-  ::std::cerr << "freelist_memory: " << freelist_memory << ::std::endl;
+//  ::std::cerr << "freelist_memory: " << freelist_memory << ::std::endl;
 
   // calculate store required for freelist objects
   size_t freelist_object_memory = 0;
   for (size_t i = 0; i <= max_block_size; ++i) 
     freelist_object_memory +=  (nblocks[i] == 0 ? 0 : sizeof(freelist_t));
-  ::std::cerr << "freelist_object_memory: " << freelist_object_memory << ::std::endl;
+//  ::std::cerr << "freelist_object_memory: " << freelist_object_memory << ::std::endl;
 
   // calculate store for freelist_pointers
   size_t freelist_pointer_memory = (max_block_size + 1) * sizeof(freelist_t*);
-  ::std::cerr << "freelist_pointer_memory: " << freelist_object_memory << ::std::endl;
+//  ::std::cerr << "freelist_pointer_memory: " << freelist_object_memory << ::std::endl;
 
   // total store requirement
   arena_size = user_memory + freelist_memory + freelist_object_memory + freelist_pointer_memory;
-  ::std::cerr << "arena_size: " << arena_size<< ::std::endl;
+//  ::std::cerr << "arena_size: " << arena_size<< ::std::endl;
 
   arena = (unsigned char*)(allocator->allocate (arena_size));
-  ::std::cerr << "arena: " << (void*)arena << ::std::endl;
+//  ::std::cerr << "arena: " << (void*)arena << ::std::endl;
 
   unsigned char *arena_pointer = arena;
 
   // allocate ring buffer pointer array 
   freelist_pointers = (freelist_t**)(void*)arena_pointer; 
-  ::std::cerr << "freelist_pointers: " << (void*)freelist_pointers<< ::std::endl;
+//  ::std::cerr << "freelist_pointers: " << (void*)freelist_pointers<< ::std::endl;
 
   arena_pointer += freelist_pointer_memory;
 
@@ -135,18 +135,18 @@ system_allocator_t::system_allocator_t(allocator_t *a, ::std::vector<mem_req_t> 
   for(size_t k = max_block_size; k>0; --k) {
     if(nblocks[k] == 0) {
       freelist_pointers[k] = freelist_object_pointer;
-      //::std::cerr << "freelist_object["<<k<<"]: " << (void*)freelist_object_pointer<< ::std::endl;
+//      std::cerr << "freelist_object["<<k<<"]: " << (void*)freelist_object_pointer<< ::std::endl;
     }
     else {
       // pointer to ring buffer object
       freelist_object_pointer = (freelist_t*)(void*)arena_pointer;
       freelist_pointers[k] = freelist_object_pointer;
-      ::std::cerr << "freelist_object["<<k<<"]: " << (void*)freelist_object_pointer<< ::std::endl;
+//      ::std::cerr << "freelist_object["<<k<<"]: " << (void*)freelist_object_pointer<< ::std::endl;
       arena_pointer += sizeof(freelist_t);
 
       // pointer to actual freelist 
       void **freelist_stack_top = (void**)(void*)arena_pointer;
-      ::std::cerr << "freelist_stack_top "<<k<<": " << (void*)freelist_stack_top<< ::std::endl;
+//      ::std::cerr << "freelist_stack_top "<<k<<": " << (void*)freelist_stack_top<< ::std::endl;
       size_t n_entries = nblocks[k];
       arena_pointer += n_entries * sizeof(void*);
 
