@@ -5,6 +5,7 @@ struct con_t {
   con_t *caller; // caller continuation
   int pc;        // program counter
   virtual con_t *resume()=0;
+  virtual size_t size()const=0;
   virtual ~con_t(){}
 };
 

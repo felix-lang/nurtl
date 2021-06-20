@@ -22,6 +22,7 @@ struct hello : con_t {
       return tmp;
     }
   CSP_RESUME_END
+  size_t size() const override { return sizeof(hello); }
 };
 
 
@@ -59,6 +60,7 @@ struct producer : con_t {
     SVC(&w_req)
 
   CSP_RESUME_END
+  size_t size() const override { return sizeof(producer); }
 };
 
 struct consumer: con_t {
@@ -93,6 +95,7 @@ struct consumer: con_t {
     CSP_GOTO(1)
 
   CSP_RESUME_END
+  size_t size() const override { return sizeof(consumer); }
 };
 
 struct square : con_t {
@@ -118,6 +121,7 @@ struct square : con_t {
       return tmp;
     }
   CSP_RESUME_END
+  size_t size() const override { return sizeof(square); }
 };
 
 
@@ -159,6 +163,7 @@ struct transducer: con_t {
     SVC(&w_req)
 
   CSP_RESUME_END
+  size_t size() const override { return sizeof(transducer); }
 };
 
 
@@ -211,7 +216,7 @@ struct init: con_t {
 
   case 4:
     { 
-      ::std::shared_ptr<csp_clock_t> clock = make_clock(fibre->process->system->system_allocator);
+      ::std::shared_ptr<csp_clock_t> clock = make_clock(fibre->process->system);
        clock->start();
       ::std::cerr << "Clock started, time is " << clock->now() << ::std::endl;
       clock_connection = clock->connect();
@@ -238,6 +243,7 @@ struct init: con_t {
 
 
   CSP_RESUME_END
+  size_t size() const override { return sizeof(init); }
 }; // init class
 
 #include <iostream>
@@ -258,6 +264,8 @@ int main() {
     reqs.push_back(mem_req_t {sizeof(consumer),50});
     reqs.push_back(mem_req_t {sizeof(init),50});
     reqs.push_back(mem_req_t {sizeof(square),50});
+    reqs.push_back(mem_req_t {256,50});
+    reqs.push_back(mem_req_t {512,50});
  
 
     // bootstrap allocator
@@ -273,7 +281,7 @@ int main() {
     system_t *system = new system_t(system_allocator);
 
     csp_run(system, process_allocator, (new init(nullptr))-> call(nullptr, &inlst, &outlst));
-
+::std::cerr << "RUN COMPLETE" << ::std::endl;
     // delete the allocators
     delete system_allocator;
     delete malloc_free;

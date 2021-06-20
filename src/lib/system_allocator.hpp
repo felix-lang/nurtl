@@ -25,14 +25,16 @@ struct system_allocator_t : allocator_t {
   ~system_allocator_t() override { allocator->deallocate(arena, arena_size); }
 
   void *allocate(size_t n_bytes) override { 
-auto rb = freelist_pointers[calblocksize(n_bytes)]; 
-std::cerr << "zzz alloc " << n_bytes << " rb: " << rb << "\n";
-rb->log();
+auto n = calblocksize(n_bytes);
+auto rb = freelist_pointers[n]; 
+//::std::cerr << "freelist pointer arrray = " << freelist_pointers << ::std::endl;
+//std::cerr << "zzz alloc " << n_bytes << ", n:" << n << " rb: " << rb << "\n";
+//rb->log();
 auto p = rb->pop();
-std::cerr << "zzz p: " << p << "\n";
+//std::cerr << "zzz p: " << p << "\n";
 return p;
 
-    return freelist_pointers[calblocksize(n_bytes)]->pop(); 
+//    return freelist_pointers[calblocksize(n_bytes)]->pop(); 
   }
   void deallocate(void *memory, size_t bytes) override { 
     freelist_pointers[calblocksize(bytes)]->push(memory); 
@@ -88,7 +90,8 @@ system_allocator_t::system_allocator_t(allocator_t *a, ::std::vector<mem_req_t> 
   
   ::std::cerr << "nblocks array: " << ::std::endl;
   for(size_t k = 0; k<= max_block_size; ++k)
-    ::std::cerr << "  " << k  << ": " << nblocks[k] << ::std::endl;
+    if(nblocks[k])
+      ::std::cerr << "  " << k  << ": " << nblocks[k] << ::std::endl;
 
   // find user memory requirement
   size_t user_memory = 0;
@@ -127,13 +130,16 @@ system_allocator_t::system_allocator_t(allocator_t *a, ::std::vector<mem_req_t> 
 
   arena_pointer += freelist_pointer_memory;
 
-  // allocate and initialise ring buffer objects
+  // allocate and initialise freelist objects
   freelist_t *freelist_object_pointer;
   for(size_t k = max_block_size; k>0; --k) {
-    if(nblocks[k] == 0) freelist_pointers[k] = freelist_object_pointer;
+    if(nblocks[k] == 0) {
+      freelist_pointers[k] = freelist_object_pointer;
+      //::std::cerr << "freelist_object["<<k<<"]: " << (void*)freelist_object_pointer<< ::std::endl;
+    }
     else {
       // pointer to ring buffer object
-      freelist_t *freelist_object_pointer = (freelist_t*)(void*)arena_pointer;
+      freelist_object_pointer = (freelist_t*)(void*)arena_pointer;
       freelist_pointers[k] = freelist_object_pointer;
       ::std::cerr << "freelist_object["<<k<<"]: " << (void*)freelist_object_pointer<< ::std::endl;
       arena_pointer += sizeof(freelist_t);

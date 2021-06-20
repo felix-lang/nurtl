@@ -55,7 +55,7 @@ struct async_channel_t : concurrent_channel_t {
     }
     else {
       if(refcnt == 1) {
-        delete current;
+        delete_concrete_object(current,current->process->process_allocator);
         return; // to prevent signalling a deleted channel
       } else {
         --refcnt;
@@ -87,7 +87,7 @@ struct async_channel_t : concurrent_channel_t {
     }
     else {
       if(refcnt == 1) {
-        delete current;
+        delete_concrete_object(current,current->process->process_allocator);
         return; // to prevent signalling a deleted channel
       } else {
         --refcnt;

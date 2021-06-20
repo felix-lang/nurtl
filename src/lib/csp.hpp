@@ -31,9 +31,20 @@ struct chan_epref_t;
 
 #include "con.hpp"
 #include "fibre.hpp"
-#include "svc.hpp"
-#include "channel.hpp"
 #include "csp_process.hpp"
+#include "svc.hpp"
+
+// resolve circular reference
+fibre_t::~fibre_t()
+ {
+    while(cc) {
+      con_t *tmp = cc->caller;
+      delete_csp_polymorphic_object(cc,process->process_allocator);
+      cc = tmp;
+    }
+  }
+
+#include "channel.hpp"
 #include "csp_thread.hpp"
 #include "sequential_channel.hpp"
 #include "concurrent_channel.hpp"
@@ -42,7 +53,7 @@ struct chan_epref_t;
 
 #define CSP_RETURN {\
   con_t *tmp = caller;\
-  delete this;\
+  delete_csp_polymorphic_object(this, fibre->process->process_allocator);\
   return tmp;\
 }
 

@@ -28,6 +28,7 @@ void delete_csp_polymorphic_object (T *object, allocator_t *a) {
 };
 
 
+/*
 template <class T> 
 struct allocator_template_t : ::std::allocator<T> {
   using value_type = T;
@@ -43,5 +44,5 @@ namespace std {
     using is_always_equal = false_type; 
   };
 }
-
+*/
 

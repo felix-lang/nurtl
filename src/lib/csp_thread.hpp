@@ -59,7 +59,7 @@ retry:
     else // the fibre returned without issuing a request so should be dead
     {
       assert(!current->cc); // check it's adead fibre
-      delete current;       // delete dead fibre
+      delete_concrete_object(current,current->process->process_allocator);
       current = process->pop();      // get more work
     }
   }

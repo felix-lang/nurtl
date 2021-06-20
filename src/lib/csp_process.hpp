@@ -31,7 +31,11 @@ struct csp_process_t {
   }
 
   csp_process_t *share() { ++refcnt; return this; }
-  void forget() { --refcnt; if(!atomic_load(&refcnt)) delete this; }
+  void forget() { 
+    --refcnt; 
+    if(!atomic_load(&refcnt)) 
+      delete_concrete_object(this,system->system_allocator); 
+  }
 
   // push a new active fibre onto active list
   void push(fibre_t *fresh) { 

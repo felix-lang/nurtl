@@ -21,14 +21,8 @@ struct fibre_t {
   fibre_t& operator=(fibre_t const&)=delete;
 
   // destructor deletes any remaining continuations in spaghetti stack
-  ~fibre_t() {
-    while(cc) {
-      con_t *tmp = cc->caller;
-      delete cc;
-      cc = tmp;
-    }
-  }
- 
+  ~fibre_t(); // defined in csp.hpp to resolve circular reference
+  
   // run until either fibre issues a service request or dies
   svc_req_t *run_fibre() { 
     while(cc) {

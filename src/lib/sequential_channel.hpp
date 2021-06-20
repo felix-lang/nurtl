@@ -24,7 +24,7 @@ struct sequential_channel_t : channel_t {
     }
     else {
       if(refcnt == 1) {
-        delete current;
+        delete_concrete_object(current,current->process->process_allocator);
       } else {
         --refcnt;
         st_push_reader(current);
@@ -50,7 +50,7 @@ struct sequential_channel_t : channel_t {
     }
     else {
       if(refcnt == 1) {
-        delete current;
+        delete_concrete_object(current,current->process->process_allocator);
       } else {
         --refcnt;
   // ::std::cout<< "do_write: fibre " << current << ", set channel "<< chan <<" recnt to " << chan->refcnt << ::std::endl;
