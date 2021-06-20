@@ -179,6 +179,7 @@ struct init: con_t {
   io_request_t clock_req;
   double waituntil;
   double *pwaituntil;
+  ::std::shared_ptr<csp_clock_t> clock;
 
   init(fibre_t *f) : con_t(f) {}
 
@@ -216,8 +217,8 @@ struct init: con_t {
 
   case 4:
     { 
-      ::std::shared_ptr<csp_clock_t> clock = make_clock(fibre->process->system);
-       clock->start();
+      clock = make_clock(fibre->process->system);
+      clock->start();
       ::std::cerr << "Clock started, time is " << clock->now() << ::std::endl;
       clock_connection = clock->connect();
       ::std::cerr << "Got connection" << ::std::endl;

@@ -39,7 +39,7 @@ struct csp_clock_t {
     start(); 
   }
   ~csp_clock_t() { 
-    // ::std::cerr << "Clock destructor" << ::std::endl; 
+    ::std::cerr << "Clock destructor" << ::std::endl; 
     stop(); 
   }
 
@@ -68,14 +68,14 @@ public:
 
       // move any alarm requests from channel to priority queue
       while(w) {
-        //::std::cerr << "Got sleep request" << ::std::endl;
+        ::std::cerr << "CLOCK: Got sleep request" << ::std::endl;
         double **ppalarmat = (double**)w->svc_req->io_request.pdata;
         //::std::cerr << "Address of data word " << ppalarmat << ::std::endl;
         double *palarmat = *ppalarmat;
         //::std::cerr << "data word " << palarmat << ::std::endl;
         double alarmat = *palarmat; 
         //::std::cerr << "Sleep request found on channel, alarm at " << alarmat << "!" << ::std::endl;
-        //::std::cerr << "Delay = " << alarmat - now() << " seconds" << ::std::endl;
+        ::std::cerr << "CLOCL: Delay = " << alarmat - now() << " seconds" << ::std::endl;
         q.push(pqreq_t{alarmat,w});
 
         w = chan->pop_writer();
@@ -83,7 +83,7 @@ public:
 
       // activate any fibres that have reached alarm time
       double t = now();
-      //::std::cerr << "Time now is " << t << ::std::endl;
+      ::std::cerr << "CLOCK: no more requests: Time now is " << t << ::std::endl;
       double sleep_until = t + 10.0; // ten second poll
       while(!q.empty()) {
         //::std::cerr << "Examining queue" << ::std::endl;
@@ -107,9 +107,11 @@ public:
           // *** OR ***
           // THEIR TIMEOUTS ACCELERATED TO NOW
           chan->unlock();
+::std::cerr << "CLOCK: run flag says STOP!" << ::std::endl;
           return;
         }
         chan->unlock();
+::std::cerr << "CLOCK: run flag says GO! so now executing wait!" << ::std::endl;
         ::std::unique_lock lk(chan->cv_lock); // lock mutex
         auto t = ::std::chrono::time_point<
            ::std::chrono::high_resolution_clock,
@@ -117,6 +119,7 @@ public:
            ::std::chrono::duration<double>(sleep_until));
 
         chan->cv.wait_until(lk, t);
+::std::cerr << "CLOCK: wait interrupted" << ::std::endl;
         // mutex is lock on exit from wait but then released by RAII
        }
        //::std::cerr << "Condition variable woke up" << ::std::endl;
