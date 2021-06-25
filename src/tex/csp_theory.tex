@@ -72,7 +72,65 @@ returns control.
 
 \section{Fibres}
 
+A {\em fibre} consists of a stack of continuations.
+
 \includegraphics{../src/tex/fibre.png}
+
+\section{Channels}
+
+A {\em channel} is a synchronisation primitive which also allows transmission
+of data.\
+
+Channels are accessed via {\em channel endpoints}, using {\em channel endpoint references.}
+
+A particular channel enpoint may be accessed only from the continuations
+of one fibre; that is, each endpoint must be uniquely owned by a single
+fibre. This invariant ensures the correct termination of fibres
+making I/O requests which cannot be satisfied. 
+
+\includegraphics{../src/tex/channel.png}
+
+\chapter{Access}
+Objects in the system can access others using either pointers
+or reference counting smart pointers. A variable containing a pointer
+which expresses ownership is called a {\em strong pointer variable}.
+Reference counting pointer variables are always strong.
+
+Ordinary pointers can also be strong. In this case, the object referred
+to must be manually deleted before the object containing the variable
+is destroyed.
+
+A weak pointer variable is a variable containing a pointer which provides
+access to an object which owns, directly or indirectly, the containing
+variable. Such objects must be deleted before the owning object is deleted
+so that the lifetime of the weak pointer variable is contained temporally
+in the owner lifetime.
+
+\includegraphics{../src/tex/weak_access.png}
+
+\chapter{Operational Semantics}
+The core semantic operations of the system are construction of
+processes, threads, and fibres, and channel I/O.
+
+Reads and writes on channels are performed with special service calls
+which are given a channel endpoint reference. The semantic rules
+are simple enough.
+
+A channel may be in three states. It may be empty, consist of a set
+of readers, or consist of a set of writers.
+
+When a write is performed then, if the channel is empty or consists 
+of a set of writers, the fibre performing the write is added to the channel.
+Since this fibre we the currently running fibre of some thread, and the
+fibre is now suspended, the thread no attempts to find another 
+fibre to execute.
+
+If the channel contains a reader then, instead, it is removed from
+the channel. Data is transfered from the writer to the reader.
+Nominally, both fibres then become active fibres of their 
+respective processes.
+
+
 
 
 \end{document}
