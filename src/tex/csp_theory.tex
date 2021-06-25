@@ -60,12 +60,18 @@ are owned by their process. Running fibres are owned by the thread
 running them which are owned by the thread's process.
 
 When a thread is out of work, it attempts to locate a 
-ready fibre the and run it. If there are no ready fibres,
+ready fibre then run it. If there are no ready fibres,
 no fibres are running, and there are no fibres waiting on
 asynchronous I/O from an external device or another system,
 then the process terminates and all associated memory is released,
 all but the initial thread are terminated, and the initial thread
 returns control.
+
+A process is initiated by a single C++ function call
+which is passed a pointer to the initial continuation to invoke
+and a pointer to the owning system. A single threaded processes
+is then constructed with a single fibre owning the initial 
+continuation.
 
 \includegraphics{../src/tex/process.png}
 
@@ -131,6 +137,43 @@ Nominally, both fibres then become active fibres of their
 respective processes.
 
 
+\chapter{Allocators}
+An {\em allocator} is an object with two methods, \verb$allocate$ and 
+\verb$deallocate$, used to manage memory blocks. The allocate method
+retrieves an available block of a particular size, and the deallocate
+method returns to the free store.
+
+Each system has a {\em system allocator} which must be used to construct
+process objects, channel objects, and channel endpoint objects.
+
+Each process has a {\em process allocator} which must be used to construct
+fibres and continuations of that process.
+
+We provide a standard system allocator of class \verb$system\_allocator_t$.
+This allocator is thread safe and uses spinlocks to protect the
+allocation and deallocation methods. 
+
+The management objects and the user memory blocks are all suballocated 
+from a single large memory block retrieved from another allocator, 
+its {\em bootstrap allocator.}  We provide a convenience allocator
+which can be used as the initial bootstrap for other allocators,
+of class \verb%malloc_free_t% allocator.
+
+The standard system allocator requires that only blocks retrieved
+from it by \verb%allocate% be returned to it, by method \verb$deallocte$.
+In addition, no more than the available number of blocks of any particular
+size may be allocated or the behaviour is undefined. The system allocator
+must be constructed with the maximum number of blocks required.
+
+Requests for a particular size are mapped to requests for the size which
+is the innitially specified size which is the least upper bound of the
+requested size. Requests for blocks larger than any specified size
+have undefined behaviour.
+
+The model is based on the fact that all programs are ultimately
+finite state machines. This requires all scalable programs be bounded
+so that the maximum number of blocks of any particular size ever required
+at any time can be calculated and thus pre-allocated.
 
 
 \end{document}
