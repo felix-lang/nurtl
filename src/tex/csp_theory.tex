@@ -14,163 +14,65 @@
 \usepackage{hyperref}
 \hypersetup{pdftex,colorlinks=true,allcolors=blue}
 \usepackage{hypcap}
-
+\usepackage{graphicx}
 \title{Communicating Sequential Processes\\ in C++}
 \author{John Skaller}
 \begin{document}
 \maketitle
 \tableofcontents
 \chapter{CSP model}
-An {\em event} in the execution of a closed sequential deterministic program is a 
-change of state that occurs at a particular time and particular instruction. 
-The time and address of the instruction are the {\em coordinates}
-of the event. 
+The CSP kernel supports a simple architecture.
 
-The difference between the previous and next state in an event
-is called an {\em action}. If an action from one state to the same
-state, so that the action is the identity function, then the program
-can no longer progress and is deemed to have terminated. An instruction
-with this effect is known as a {\em halt}.
+\section{Systems}
+A {\em system} consists of several {\em processes} which communicate
+using {\em asynchronous channels}. Systems are used to manage 
+core {\em internal} resources: processing elements (CPUs), program code,
+time, and data memory.
 
-The result of a terminating closed sequential
-program is deterministic and equal to the integral of the actions from its
-initial state to terminating fixpoint.
-
-The {\em trace} of a program is the sequence of events of an execution.
-At a particular event coordinate, the {\em history} of the execution is the 
-collection of previous events, and the {\em continuation} is the future history
-or set of subsequent events.
-
-A {\em continuation object} is an object which encapsulates the continuation
-of a program. On a typical stack machine it consists of the stack, identified
-by the stack pointer, and the program counter.
-
-A {\em threaded} program is one in which multiple threads of control can exist.
-The simultaneous execution of several threads is called {\em concurrency}.
-Memory which two concurrent threads can access is said to be {\em shared}
-between the threads, more generally in any program {\em shared memory} is memory
-which any two threads can access. 
-
-Shared memory concurrency introduces all sorts of issues. In general the 
-operation of a program is no longer deterministic. The relationship between
-events of one thread and another is no longer a total order. It is generally
-hard to reason about either the correctness of performance of a concurrent 
-program.
-
-In 1978, Tony Hoare introduced a programming model called {\em Communicating
-Sequential Processes} abbreviated {\em CSP} in a seminal paper you can find here:
-\url{https://www.cs.cmu.edu/~crary/819-f09/Hoare78.pdf}. The paper is informal but
-the semantics were later formalised.
-
-The model eliminates shared memory in favour of synchronisation by transmission
-of values on channels, and provides a calculus with which to reason about the
-behaviour of a program. Nevertheless the model is far too complex for practical
-use. Today there are algorithms which can predict if a CSP model terminates,
-and whether it does so by deadlocking, but these algorithms are complex and take
-a lot of time to run. In addition, shared memory concurrency is essential for
-performance.
-
-We will introduce a model which is more restricted than full CSP but also supports
-shared memory. In this model, care must be taken in order to ensure it is possible
-to reason about the program.
-
-\chapter{Continuations and Resumptions}
-Most modern computing platforms use a computing model based on a stack machine
-augmented with registers. In this model, computational instructions perform
-actions which use and modify registers and memory, where the memory is located by
-considering some register contains a memory address.
-
-The two key registers on such a platform are the program counter {\em PC}
-and the stack pointer {\em SP}. When a normal computational instruction
-is executed, the program counter is incremented so as to locate the next
-instruction to execute. This is the {\em continuation} of the program
-at that point.
-
-Special instructions can be used to which also modify the program counter
-non-sequentially, these are typically a jumps and conditional jumps,
-calls, and returns.
-
-Call and return instructions are used to implement subroutines and are very
-special because they combine modification of both the program counter
-and stack pointer in a very specific way.
-
-The {\em current continuation} of an instruction is the location of
-the next instruction to execute, along with the setting of the stack
-pointer.
-
-The {\em top} of a stack is the location identified by the stack pointer.
-When the stack pointer is advanced and a value stored at the new top
-of the stack, we say the value has been pushed onto the stack.
-When a value is retrived from the top and the stack pointer retarded,
-we say the value has been popped from the stack. Note that whilst 
-we tend to say a stack pointer is incremented to make space for a new
-top, most modern machines actually put the base of the stack at a high
-address and advance the stack by decrementing the stack pointer.
-
-A {\em call} instruction jumps to a new location by setting the program counter
-to a the entry point of a subroutine, whilst simultaneously pushing the
-current continuation onto the stack. The routine executing the call
-instruction is termed the {\em caller}. The routine which is 
-called is termed the {\em callee}. 
+A {\em device} is an arbitrary object and associated service thread which is
+used to manage {\em external} resources, including network and file system access,
+and user interfaces.
 
 
-A {\em return} instruction pops the callers current continuation into the
-program counter. 
+\includegraphics{../src/tex/system.png}
 
-In a programming language, a lexically contigous section of programming
-code with a well established semantic is called a {\em module}. The most
-common small scale module available is called a {\em routine.} It has
-a single entry point but no well defined exit. A routine typically has
-a well defined set of parameters which are locations on the machine
-stack, and the parameters are said to be {\em bound} to argument expressions
-by evaluating these expressions and storing the results in the parameters
-before the routine is called. 
+Processes within the same system can communicate with each other or
+with devices. Processes in distinct systems must use a device as
+a middleman to communicate.
 
-In a programming language based on the {\em structured programming} model,
-modules are {\em subroutines}. A subroutine is a routine, which has a well
-defined mechanism to exit. A subroutine is entered with a call instruction
-to its entry point, and exits by the return instruction, which resets the
-machine stack and program counter to the callers current continuation. 
-The subroutine is thus completed or terminated, and the caller, 
-which during subroutine execution is considered to be {\em suspended}, is 
-{\em resumed} when the subroutine completes.
+\section{Processes}
+The execution of a process is effected by one or more {\em threads}.
+If there is only one, the process is {\em single threaded,} otherwise
+if there are two or more, {\em multi-threaded.} Every process is started
+with a single {\em initial} thread.
 
-Subroutines allow the heirarchical decomposition of operations and are
-a powerful tool. It is important to understand that the call and return
-instructions used {\em couple} transmission of data with control flow
-implicitly by use of the machine stack. This is what structured
-programming is. The source code structure is similarly heirarchical
-which leads to lexical nesting of units called blocks as well as 
-decomposition of the program into subroutines. Because parameters
-of subroutines are stack locations, they can be {\em reused} with different
-arguments. In addition, working memory can be obtained by the subroutine
-from the machine stack and discarded before resuming the caller.
+A {\em fibre} is a logical thread of control and associated execution
+context. Each process consists of a collection of fibres. 
 
-However subroutines are severely limited in their utility by the 
-implicit coupling of control flow and data transmission which requires
-a machine stack. The problem is, to run many threads of control, you need
-a lot of machine stacks. Machine stacks on modern machines are very time efficient
-but consume a lot of address space because the stack must be allocated
-to be large enough to hold the maximum requirement of a thread, at times
-when less is used the unused address space remains.
+Fibres in a process are {\em running} if a thread is elaborating the
+fibre's program code, otherwise the fibre is {\em suspended}. 
 
-In addition, modern systems share the limited number of available
-cores between threads by pre-emptions. The operating system has to switch
-stacks and load and save registers, which is very expensive, especially
-on CISC machines such as those produced by Intel.
+A suspended fibre can either be {\em ready} or {\em waiting}.
+The collection of ready and running fibres are said to be {\em active}.
 
-Therefore, we will solve this problem by dynamically allocating
-stack frames from the heap, and we will use routines instead 
-of subroutines, for which we {\em explicitly} pass the current
-continuation as an argument.
+All the ready fibres of a processes are maintained in a set and
+are owned by their process. Running fibres are owned by the thread
+running them which are owned by the thread's process.
 
-This model is known as {\em Continuation Passing Style} or CPS.
-In this model, the heap allocated stack frames are encapsulated
-continuation objects which are linked together by explicitly
-storing the callers continuation pointer; the resulting singly
-linked list is called a {\em spaghetti stack}.
+When a thread is out of work, it attempts to locate a 
+ready fibre the and run it. If there are no ready fibres,
+no fibres are running, and there are no fibres waiting on
+asynchronous I/O from an external device or another system,
+then the process terminates and all associated memory is released,
+all but the initial thread are terminated, and the initial thread
+returns control.
 
-\chapter{Coroutines}
-`
+\includegraphics{../src/tex/process.png}
+
+
+\section{Fibres}
+
+\includegraphics{../src/tex/fibre.png}
+
 
 \end{document}
