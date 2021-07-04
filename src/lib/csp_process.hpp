@@ -2,7 +2,7 @@
 struct csp_process_t {
   ::std::atomic_size_t refcnt;
   system_t *system;
-  allocator_t *process_allocator;
+  alloc_ref_t process_allocator;
 
   fibre_t *active;
   ::std::atomic_flag lock; // this one is a spin lock for sync ops
@@ -23,7 +23,7 @@ struct csp_process_t {
 
   ::std::atomic_size_t running_thread_count;
 
-  csp_process_t(system_t *s, allocator_t *a) : 
+  csp_process_t(system_t *s, alloc_ref_t a) : 
     system(s), process_allocator(a),
     refcnt(1), active(nullptr), async_count(0), lock(false), running_thread_count(0) 
   { 

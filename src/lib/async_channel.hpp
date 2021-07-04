@@ -102,7 +102,7 @@ struct async_channel_t : concurrent_channel_t {
 
 };
 
-chan_epref_t make_async_channel(allocator_t *a) {
+chan_epref_t make_async_channel(alloc_ref_t a) {
   return acquire_channel(a, new async_channel_t);
 }
 

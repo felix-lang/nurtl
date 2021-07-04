@@ -18,13 +18,13 @@ struct csp_thread_t {
   void do_spawn_cothread(spawn_fibre_request_t *req);
 };
 
-extern void csp_run(system_t *system, allocator_t *process_allocator, con_t *init) {
-  csp_thread_t (new(*system->system_allocator) csp_process_t(system, process_allocator)).sync_run(init);
+extern void csp_run(system_t *system, alloc_ref_t process_allocator, con_t *init) {
+  csp_thread_t (new(system->system_allocator) csp_process_t(system, process_allocator)).sync_run(init);
 }
 
 // scheduler subroutine runs until there is no work to do
 void csp_thread_t::sync_run(con_t *cc) {
-  current = new(*process->process_allocator) fibre_t(cc, process);
+  current = new(process->process_allocator) fibre_t(cc, process);
   cc->fibre = current;
   ++process->running_thread_count;
 retry:
@@ -105,7 +105,7 @@ void csp_thread_t::do_spawn_fibre(spawn_fibre_request_t *req) {
   current->svc_req=nullptr;
   process->push(current);
   con_t *cc= req->tospawn;
-  current = new(*process->process_allocator) fibre_t(cc, process);
+  current = new(process->process_allocator) fibre_t(cc, process);
   cc->fibre = current;
 // ::std::cout << "spawned " << current << ::std::endl;
 }
@@ -114,7 +114,7 @@ void csp_thread_t::do_spawn_fibre_deferred(spawn_fibre_request_t *req) {
 // ::std::cout << "do spawn deferred" << ::std::endl;
   current->svc_req=nullptr;
   con_t *init = req->tospawn;
-  fibre_t *d = new(*process->process_allocator) fibre_t(init, process);
+  fibre_t *d = new(process->process_allocator) fibre_t(init, process);
   init->fibre = d;
   process->push(d);
 // ::std::cout << "spawn deferred " << d << ::std::endl;
@@ -124,7 +124,7 @@ static void spawn(csp_process_t *pa, con_t *cc) {
   csp_thread_t(pa).sync_run(cc);
 }
 void csp_thread_t::do_spawn_process(spawn_process_request_t *req) {
-  csp_process_t *process = new(*process->system->system_allocator) csp_process_t(process->system, req->process_allocator);
+  csp_process_t *process = new(process->system->system_allocator) csp_process_t(process->system, req->process_allocator);
   ::std::thread(spawn,process,req->tospawn).detach();
 }
 

@@ -88,7 +88,7 @@ struct concurrent_channel_t : sequential_channel_t {
 
 };
 
-chan_epref_t make_concurrent_channel(allocator_t *a) {
-  return acquire_channel(a, new(*a) concurrent_channel_t);
+chan_epref_t make_concurrent_channel(alloc_ref_t a) {
+  return acquire_channel(a, new(a) concurrent_channel_t);
 }
 

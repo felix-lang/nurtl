@@ -175,7 +175,10 @@ struct channel_endpoint_t {
 
 // lvalue copy
 chan_epref_t::chan_epref_t(chan_epref_t &p) { 
-  if(p.endpoint) { endpoint = p.endpoint; p.endpoint->refcnt++; }
+  if(p.endpoint) { 
+    endpoint = p.endpoint; 
+    p.endpoint->refcnt++; 
+  }
   else endpoint = nullptr; 
 } 
 
@@ -190,7 +193,7 @@ chan_epref_t::~chan_epref_t() {
   }
 } // dtor
 
-chan_epref_t acquire_channel(allocator_t *a, channel_t *p) {
-  return chan_epref_t(new(*a) channel_endpoint_t(p,a));
+chan_epref_t acquire_channel(alloc_ref_t a, channel_t *p) {
+  return chan_epref_t(new(a) channel_endpoint_t(p,a.get()));
 }
 

@@ -34,7 +34,7 @@ struct csp_clock_t {
   }
 
   csp_clock_t (system_t *a) : system(a), run(false) { 
-    chan = new(*system->system_allocator) async_channel_t;
+    chan = new(system->system_allocator) async_channel_t;
     chanepr = acquire_channel(system->system_allocator, chan); 
     start(); 
   }

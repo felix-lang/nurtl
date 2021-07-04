@@ -65,7 +65,7 @@ struct sequential_channel_t : channel_t {
 
 };
 
-chan_epref_t make_sequantial_channel(allocator_t *a) {
-  return acquire_channel(a, new(*a) sequential_channel_t);
+chan_epref_t make_sequantial_channel(alloc_ref_t a) {
+  return acquire_channel(a, new(a) sequential_channel_t);
 }
 

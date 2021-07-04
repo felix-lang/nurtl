@@ -16,7 +16,7 @@ static size_t calblocksize(size_t n) {
 }
 
 struct system_allocator_t : allocator_t {
-  allocator_t *allocator;
+  alloc_ref_t allocator;
   unsigned char *arena;  // the memory to be allocated 
   size_t arena_size;
 
@@ -44,7 +44,7 @@ return p;
   system_allocator_t(system_allocator_t const&)=delete;
   system_allocator_t &operator=(system_allocator_t const&)=delete;
 
-  system_allocator_t(allocator_t *, ::std::vector<mem_req_t>);
+  system_allocator_t(alloc_ref_t, ::std::vector<mem_req_t>);
 };
 
 // ***************************************************************************
@@ -72,7 +72,7 @@ return p;
 // ***************************************************************************
 
 
-system_allocator_t::system_allocator_t(allocator_t *a, ::std::vector<mem_req_t> reqs) : allocator(a) {
+system_allocator_t::system_allocator_t(alloc_ref_t a, ::std::vector<mem_req_t> reqs) : allocator(a) {
 
   ::std::cerr << ::std::setbase(16);
 

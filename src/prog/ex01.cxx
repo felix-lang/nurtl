@@ -156,7 +156,7 @@ struct transducer: con_t {
 
   case 2:
     //CSP_CALL_DIRECT2(square,&value,value)
-    return (new(*fibre->process->process_allocator) square(fibre))->call(this,&value,value);
+    return (new(fibre->process->process_allocator) square(fibre))->call(this,&value,value);
 
   case 3:
     pc = 1;
@@ -200,19 +200,19 @@ struct init: con_t {
     ch2out = make_concurrent_channel(fibre->process->system->system_allocator);
     ch2inp = ch2out->dup();
  
-    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(*fibre->process->process_allocator) producer(nullptr))->call(nullptr, inlst, ch1out))
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(fibre->process->process_allocator) producer(nullptr))->call(nullptr, inlst, ch1out))
     SVC(&spawn_req)
  
   case 1:
-    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(*fibre->process->process_allocator) transducer(nullptr))->call(nullptr, ch1inp, ch2out))
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(fibre->process->process_allocator) transducer(nullptr))->call(nullptr, ch1inp, ch2out))
     SVC(&spawn_req)
  
   case 2:
-    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(*fibre->process->process_allocator) consumer(nullptr))->call(nullptr, outlst,ch2inp))
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(fibre->process->process_allocator) consumer(nullptr))->call(nullptr, outlst,ch2inp))
     SVC(&spawn_req)
  
   case 3:
-    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(*fibre->process->process_allocator) hello(nullptr))->call(nullptr))
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(fibre->process->process_allocator) hello(nullptr))->call(nullptr))
     SVC(&spawn_req)
 
   case 4:
@@ -270,13 +270,13 @@ int main() {
  
 
     // bootstrap allocator
-    allocator_t *malloc_free = new malloc_free_allocator_t;
+    alloc_ref_t malloc_free = new malloc_free_allocator_t;
 
     // system allocator
-    allocator_t *system_allocator = new system_allocator_t(malloc_free,reqs);
+    alloc_ref_t system_allocator = new system_allocator_t(malloc_free,reqs);
 
     // initial process will use the system allocator
-    allocator_t *process_allocator = system_allocator;
+    alloc_ref_t process_allocator = system_allocator;
 
     // creates the clock too
     system_t *system = new system_t(system_allocator);
@@ -284,8 +284,8 @@ int main() {
     csp_run(system, process_allocator, (new init(nullptr))-> call(nullptr, &inlst, &outlst));
 ::std::cerr << "RUN COMPLETE" << ::std::endl;
     // delete the allocators
-    delete system_allocator;
-    delete malloc_free;
+    //delete system_allocator;
+    //delete malloc_free;
 
     // and the system object
     delete system;
