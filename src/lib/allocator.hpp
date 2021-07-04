@@ -6,6 +6,7 @@ struct allocator_t {
   virtual ~allocator_t(){
     ::std::cerr << "Allocator deleted" << ::std::endl; 
   }
+  virtual size_t size()const=0;
 };
 
 // smart pointer to allocators

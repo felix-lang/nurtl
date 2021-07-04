@@ -22,17 +22,18 @@ struct system_allocator_t : allocator_t {
 
   freelist_t **freelist_pointers; // array of ring buffer pointers 
 
+  size_t size()const override { return sizeof(*this); }
   ~system_allocator_t() override { allocator->deallocate(arena, arena_size); }
 
   void *allocate(size_t n_bytes) override { 
-auto n = calblocksize(n_bytes);
-auto rb = freelist_pointers[n]; 
-//::std::cerr << "freelist pointer arrray = " << freelist_pointers << ::std::endl;
-//std::cerr << "zzz alloc " << n_bytes << ", n:" << n << " rb: " << rb << "\n";
-//rb->log();
-auto p = rb->pop();
-//std::cerr << "zzz p: " << p << "\n";
-return p;
+    auto n = calblocksize(n_bytes);
+    auto rb = freelist_pointers[n]; 
+    //::std::cerr << "freelist pointer arrray = " << freelist_pointers << ::std::endl;
+    //std::cerr << "zzz alloc " << n_bytes << ", n:" << n << " rb: " << rb << "\n";
+    //rb->log();
+    auto p = rb->pop();
+    //std::cerr << "zzz p: " << p << "\n";
+    return p;
 
 //    return freelist_pointers[calblocksize(n_bytes)]->pop(); 
   }
