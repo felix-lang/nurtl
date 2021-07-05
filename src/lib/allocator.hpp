@@ -1,14 +1,3 @@
-struct allocator_t {
-  ::std::atomic<size_t> refcnt;
-  allocator_t() : refcnt(1) {}
-  virtual void *allocate(size_t)=0;
-  virtual void deallocate(void *, size_t)=0;
-  virtual ~allocator_t(){
-    ::std::cerr << "Allocator deleted" << ::std::endl; 
-  }
-  virtual size_t size()const=0;
-};
-
 // smart pointer to allocators
 struct alloc_ref_t {
   allocator_t *allocator;
@@ -52,16 +41,40 @@ struct alloc_ref_t {
   ~alloc_ref_t();
 };
 
+struct allocator_t {
+  alloc_ref_t parent;
+  ::std::atomic<size_t> refcnt;
+
+  allocator_t() : refcnt(1) {}
+  allocator_t(alloc_ref_t p) : parent(p), refcnt(1) {}
+
+  virtual void *allocate(size_t)=0;
+  virtual void deallocate(void *, size_t)=0;
+  virtual ~allocator_t(){
+    ::std::cerr << "Allocator deleted" << ::std::endl; 
+  }
+  virtual size_t size()const=0;
+};
+
+
 // lvalue copy 
 alloc_ref_t::alloc_ref_t(alloc_ref_t &p) {
   if(p.allocator) ++p.allocator->refcnt;
   allocator = p.allocator;
 }
 
+template<class T>
+void delete_csp_polymorphic_object (T *object, alloc_ref_t a);
+
 // destructor
 alloc_ref_t::~alloc_ref_t() {
   if(allocator) {
-    if(allocator->refcnt == 1) delete allocator; // FIXME
+    if(allocator->refcnt == 1) 
+      if(allocator->parent.get()) {
+        ::std::cerr << "Using parent to delete allocator" << ::std::endl;
+        delete_csp_polymorphic_object(allocator,allocator->parent);
+      }
+      else delete allocator;
     else --allocator->refcnt;
   }
 }

@@ -18,6 +18,7 @@ struct channel_t;
 struct csp_process_t;
 struct con_t;
 struct allocator_t;
+struct alloc_ref_t;
 struct system_t;
 struct channel_endpoint_t;
 struct chan_epref_t;
@@ -25,6 +26,7 @@ struct chan_epref_t;
 // the csp system
 #include "allocator.hpp"
 #include "malloc_free_allocator.hpp"
+#include "utility_allocators.hpp"
 #include "freelist.hpp"
 #include "system_allocator.hpp"
 #include "system.hpp"

@@ -16,14 +16,13 @@ static size_t calblocksize(size_t n) {
 }
 
 struct system_allocator_t : allocator_t {
-  alloc_ref_t allocator;
   unsigned char *arena;  // the memory to be allocated 
   size_t arena_size;
 
   freelist_t **freelist_pointers; // array of ring buffer pointers 
 
   size_t size()const override { return sizeof(*this); }
-  ~system_allocator_t() override { allocator->deallocate(arena, arena_size); }
+  ~system_allocator_t() override { parent->deallocate(arena, arena_size); }
 
   void *allocate(size_t n_bytes) override { 
     auto n = calblocksize(n_bytes);
@@ -73,7 +72,7 @@ struct system_allocator_t : allocator_t {
 // ***************************************************************************
 
 
-system_allocator_t::system_allocator_t(alloc_ref_t a, ::std::vector<mem_req_t> reqs) : allocator(a) {
+system_allocator_t::system_allocator_t(alloc_ref_t a, ::std::vector<mem_req_t> reqs) : allocator_t(a) {
 
   ::std::cerr << ::std::setbase(16);
 
@@ -120,7 +119,7 @@ system_allocator_t::system_allocator_t(alloc_ref_t a, ::std::vector<mem_req_t> r
   arena_size = user_memory + freelist_memory + freelist_object_memory + freelist_pointer_memory;
 //  ::std::cerr << "arena_size: " << arena_size<< ::std::endl;
 
-  arena = (unsigned char*)(allocator->allocate (arena_size));
+  arena = (unsigned char*)(parent->allocate (arena_size));
 //  ::std::cerr << "arena: " << (void*)arena << ::std::endl;
 
   unsigned char *arena_pointer = arena;

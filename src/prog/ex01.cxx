@@ -272,8 +272,11 @@ int main() {
     // bootstrap allocator
     alloc_ref_t malloc_free = new malloc_free_allocator_t;
 
+
     // system allocator
-    alloc_ref_t system_allocator = new system_allocator_t(malloc_free,reqs);
+    alloc_ref_t system_allocator_delegate = new(malloc_free) system_allocator_t(malloc_free,reqs);
+    alloc_ref_t system_allocator = new(malloc_free) debugging_allocator_t("Sys", malloc_free, system_allocator_delegate);
+
 
     // initial process will use the system allocator
     alloc_ref_t process_allocator = system_allocator;
@@ -283,11 +286,6 @@ int main() {
 
     csp_run(system, process_allocator, (new init(nullptr))-> call(nullptr, &inlst, &outlst));
 ::std::cerr << "RUN COMPLETE" << ::std::endl;
-    // delete the allocators
-    //delete system_allocator;
-    //delete malloc_free;
-
-    // and the system object
     delete system;
   }
 
