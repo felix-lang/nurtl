@@ -34,10 +34,12 @@ struct statistics_allocator_t : allocator_t {
       stat_rec_t rec = {n, {1, 1}};
       stats.insert(rec);
     } 
-    auto rec = *loc;
-    rec.second.first++;
-    if(rec.second.first> rec.second.second) rec.second.second = rec.second.first; // max allocated
-    stats[n] = rec.second;
+    else {
+      auto rec = *loc;
+      rec.second.first++;
+      if(rec.second.first> rec.second.second) rec.second.second = rec.second.first; // max allocated
+      stats[n] = rec.second;
+    }
     return p;
   }
   void deallocate(void *p, size_t n) override { 
