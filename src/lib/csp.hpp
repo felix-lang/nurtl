@@ -9,7 +9,9 @@
 #include <condition_variable>
 #include <queue>
 #include <iostream>
-
+#include <map>
+#include <utility>
+#include <cstdlib>
 
 // forward decls
 struct csp_clock_t;

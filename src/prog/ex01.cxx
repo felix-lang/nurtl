@@ -270,12 +270,14 @@ int main() {
  
 
     // bootstrap allocator
-    alloc_ref_t malloc_free = new malloc_free_allocator_t;
+    alloc_ref_t malloc_free = new malloc_free_allocator_t; // parent C++ allocator
+    alloc_ref_t malloc_free_debugger = new(malloc_free) debugging_allocator_t("Malloc", malloc_free, malloc_free);
 
 
     // system allocator
-    alloc_ref_t system_allocator_delegate = new(malloc_free) system_allocator_t(malloc_free,reqs);
-    alloc_ref_t system_allocator = new(malloc_free) debugging_allocator_t("Sys", malloc_free, system_allocator_delegate);
+    alloc_ref_t system_allocator_delegate = new(malloc_free_debugger) system_allocator_t(malloc_free_debugger,malloc_free_debugger, reqs);
+    alloc_ref_t system_allocator_debugger = new(malloc_free_debugger) debugging_allocator_t("Sys", malloc_free_debugger, system_allocator_delegate);
+    alloc_ref_t system_allocator = new(malloc_free_debugger) statistics_allocator_t("Sysalloc.stats.txt", malloc_free_debugger, system_allocator_debugger);
 
 
     // initial process will use the system allocator
@@ -284,7 +286,7 @@ int main() {
     // creates the clock too
     system_t *system = new system_t(system_allocator);
 
-    csp_run(system, process_allocator, (new init(nullptr))-> call(nullptr, &inlst, &outlst));
+    csp_run(system, process_allocator, (new(process_allocator) init(nullptr))-> call(nullptr, &inlst, &outlst));
 ::std::cerr << "RUN COMPLETE" << ::std::endl;
     delete system;
   }
