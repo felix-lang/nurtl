@@ -192,6 +192,20 @@ In addition many allocators delegate to others, often one other,
 but many others could be used. The delegation graph must also
 be a directed acyclic graph.
 
+\chapter{Continuations}
+The heart of the system are continuation objects. These are user defined
+classes that contain the application code. The code must be presented
+in a heavily styalised way in order for the system to operate correctly.
+
+A translator for a higher level language will generate conformant
+continuations.
+
+The heart of a continuation contains three methods:
+\begin{enumerate}
+\item The constructor is responsible for binding the lexical context
+\item The \verb$call$ method is responsible for assigning the arguments
+\item The \verb$resume$ method is responsible for executing a step of code
+\end{enumerate}
 
 
 
