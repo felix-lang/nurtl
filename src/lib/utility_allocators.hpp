@@ -1,7 +1,10 @@
+// should be called tracing allocator
+// prints every allocation and deallocation
+// 
 struct debugging_allocator_t : allocator_t {
   alloc_ref_t delegate;
   char const *tag;
-  debugging_allocator_t(char const *tg, alloc_ref_t p, alloc_ref_t a) : tag(tg), allocator_t(p), delegate(a) {}
+  debugging_allocator_t(alloc_ref_t p, alloc_ref_t a, char const *tg) : tag(tg), allocator_t(p), delegate(a) {}
   ~debugging_allocator_t() override {}
   virtual size_t size()const override { return sizeof(*this); }
 
@@ -16,6 +19,19 @@ struct debugging_allocator_t : allocator_t {
   }
 };
 
+// TODO: checks 
+// every allocation is deallocated
+// every deallocation was previously allocated
+
+struct checking_allocator_t : allocator_t {
+};
+
+// saves statistics to a file
+// stats saved: max allocation at any one time for each block size
+// could do more eg: 
+// * total allocations for each block size
+// * max memory allocated at any one time
+//
 struct statistics_allocator_t : allocator_t {
   alloc_ref_t delegate;
 
@@ -24,7 +40,7 @@ struct statistics_allocator_t : allocator_t {
   using stat_rec_t = stat_t::value_type;
   stat_t stats;
 
-  statistics_allocator_t(char const *tg, alloc_ref_t p, alloc_ref_t a) : filename(tg), allocator_t(p), delegate(a) {}
+  statistics_allocator_t(alloc_ref_t p, alloc_ref_t a, char const *tg ) : filename(tg), allocator_t(p), delegate(a) {}
   virtual size_t size()const override { return sizeof(*this); }
 
   void *allocate(size_t n) override { 
@@ -63,5 +79,13 @@ struct statistics_allocator_t : allocator_t {
       fprintf(outfile, "%8lu: %8lu\n",rec.first, rec.second.second);
     fclose(outfile);
   }
+};
+
+// TODO: wraps a spinlock around every allocate and deallocate
+struct spinlocking_allocator_t : allocator_t {
+};
+
+// TODO: wraps a mutex around every allocate and deallocate
+struct mutexing_allocator_t : allocator_t {
 };
 

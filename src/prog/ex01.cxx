@@ -271,13 +271,13 @@ int main() {
 
     // bootstrap allocator
     alloc_ref_t malloc_free = new malloc_free_allocator_t; // parent C++ allocator
-    alloc_ref_t malloc_free_debugger = new(malloc_free) debugging_allocator_t("Malloc", malloc_free, malloc_free);
+    alloc_ref_t malloc_free_debugger = new(malloc_free) debugging_allocator_t(malloc_free, malloc_free, "Malloc");
 
 
     // system allocator
     alloc_ref_t system_allocator_delegate = new(malloc_free_debugger) system_allocator_t(malloc_free_debugger,malloc_free_debugger, reqs);
-    alloc_ref_t system_allocator_debugger = new(malloc_free_debugger) debugging_allocator_t("Sys", malloc_free_debugger, system_allocator_delegate);
-    alloc_ref_t system_allocator = new(malloc_free_debugger) statistics_allocator_t("Sysalloc.stats.txt", malloc_free_debugger, system_allocator_debugger);
+    alloc_ref_t system_allocator_debugger = new(malloc_free_debugger) debugging_allocator_t(malloc_free_debugger, system_allocator_delegate, "Sys");
+    alloc_ref_t system_allocator = new(malloc_free_debugger) statistics_allocator_t( malloc_free_debugger, system_allocator_debugger, "Sysalloc.stats.txt");
 
 
     // initial process will use the system allocator
