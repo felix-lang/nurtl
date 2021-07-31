@@ -3,7 +3,7 @@ help:
 
 test:
 	# CSP TEST
-	clang++ -g -std=c++17 -ferror-limit=1 -O2 -Isrc/lib src/prog/ex01.cxx -o ex01
+	clang++ -g -std=c++17 -ferror-limit=1 -O2 -Isrc/lib -Isrc/chips src/prog/ex01.cxx -o ex01
 	./ex01
 
 docs:

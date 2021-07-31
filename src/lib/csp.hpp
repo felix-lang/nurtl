@@ -1,3 +1,6 @@
+#ifndef _CSP
+#define _CSP
+
 // C++ resources
 #include <cstdint>
 #include <cassert>
@@ -81,6 +84,8 @@ fibre_t::~fibre_t()
   default: assert(false);\
   }}
 
+#define CSP_SIZE \
+  size_t size() const override { return sizeof(*this); } 
 
 #define SVC_READ_REQ(xpreq,xpchan,xpdata)\
   (xpreq)->svc_code = read_request_code_e;\
@@ -131,4 +136,5 @@ fibre_t::~fibre_t()
 #define CSP_CALL_DIRECT3(procedure,arg1,arg2,arg3)\
   return (new procedure(global))->call(this,arg1,arg2,arg3);
 */
+#endif
 
