@@ -14,6 +14,8 @@ struct source : con_t {
   C *outptr;
   F f;
 
+  CSP_SIZE
+
   source(fibre_t *f) : con_t(f) {}
   ~source(){}
 
@@ -30,16 +32,13 @@ struct source : con_t {
 
   case 1:
     outptr = new(fibre->process->process_allocator) C(f());
-    SVC(&w_req);
     pc = 1;
+    SVC(&w_req);
 
   CSP_RESUME_END
-  size_t size() const override { return sizeof(*this); } 
 };
 
 } // namespace
 
-#endif
-}
 #endif
 
