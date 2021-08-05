@@ -15,6 +15,7 @@
 #include <map>
 #include <utility>
 #include <cstdlib>
+#include <typeinfo>
 
 // forward decls
 struct csp_clock_t;
@@ -44,7 +45,9 @@ struct chan_epref_t;
 // resolve circular reference
 fibre_t::~fibre_t()
  {
+    //::std::cerr << "Fibre destructor " << this << ::std::endl;
     while(cc) {
+    //::std::cerr << "Delete continuation " << cc << ::std::endl;
       con_t *tmp = cc->caller;
       delete_csp_polymorphic_object(cc,process->process_allocator);
       cc = tmp;

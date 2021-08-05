@@ -20,11 +20,15 @@ struct alloc_ref_t {
   alloc_ref_t(alloc_ref_t &p);
 
   // rvalue assign
+  // PROOF of correctness:
+  //   If the source allocator and target allocator are the same
+  //   then the reference count must be at least 2
+  //   so destroying the target (reducing the ref count by 1) will not
+  //   destroy the allocator.
   void operator= (alloc_ref_t &&p) {
     if (&p!=this) { // ignore self assign
       this->~alloc_ref_t(); // destroy target
       new(this) alloc_ref_t(::std::move(p)); // move source to target
-      p.allocator = nullptr;
     }
   } // rass
 
@@ -51,7 +55,7 @@ struct allocator_t {
   virtual void *allocate(size_t)=0;
   virtual void deallocate(void *, size_t)=0;
   virtual ~allocator_t(){
-    ::std::cerr << "Allocator deleted" << ::std::endl; 
+    //::std::cerr << "Allocator deleted" << ::std::endl; 
   }
   virtual size_t size()const=0;
 };
@@ -68,10 +72,14 @@ void delete_csp_polymorphic_object (T *object, alloc_ref_t a);
 
 // destructor
 alloc_ref_t::~alloc_ref_t() {
+/*
+if (allocator)
+//::std::cerr << "Alloc_ref_t destructor for " << allocator << ", refcnt=" << allocator->refcnt.load() << ::std::endl;
+*/
   if(allocator) {
     if(allocator->refcnt == 1) 
       if(allocator->parent.get()) {
-        ::std::cerr << "Using parent to delete allocator" << ::std::endl;
+        //::std::cerr << "Using parent to delete allocator" << ::std::endl;
         delete_csp_polymorphic_object(allocator,allocator->parent);
       }
       else delete allocator;
@@ -94,7 +102,12 @@ void *operator new(size_t amt, alloc_ref_t& a) { assert(a.get()); return a->allo
 //
 template<class T>
 void delete_concrete_object (T *object, allocator_t *a) { 
-  object->~T(); a->deallocate(object, sizeof(T)); 
+//::std::cerr << "delete concrete object " << object << "  type " << typeid(T).name() << " using allocator " << a << ::std::endl;
+  if(a) { 
+    object->~T(); 
+    a->deallocate(object, sizeof(T)); 
+  }
+  else delete object; 
 };
 
 template<class T>
@@ -104,9 +117,13 @@ void delete_concrete_object (T *object, alloc_ref_t a) {
 
 template<class T>
 void delete_csp_polymorphic_object (T *object, allocator_t *a) { 
-  size_t amt = object->size(); 
-  object->~T();
-  a->deallocate(object, amt); 
+//::std::cerr << "delete csp polymorphic object " << object << "  type " << typeid(*object).name() << " using allocator " << a << ::std::endl;
+  if (a) {
+    size_t amt = object->size(); 
+    object->~T();
+    a->deallocate(object, amt); 
+  }
+  else delete object;
 };
 
 template<class T>

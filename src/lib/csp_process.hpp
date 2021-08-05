@@ -17,7 +17,7 @@ struct csp_process_t {
   ::std::condition_variable async_wake;
 
   void async_complete() { 
-    //::std::cout << "Active set: async complete" << ::std::endl;
+    //::std::cerr << "Active set: async complete" << ::std::endl;
     --async_count; async_wake.notify_all(); 
   }
 
@@ -27,7 +27,7 @@ struct csp_process_t {
     system(s), process_allocator(a),
     refcnt(1), active(nullptr), async_count(0), lock(false), running_thread_count(0) 
   { 
-    // ::std::cout << "New process" << ::std::endl;
+    // ::std::cerr << "New process" << ::std::endl;
   }
 
   csp_process_t *share() { ++refcnt; return this; }
@@ -39,7 +39,7 @@ struct csp_process_t {
 
   // push a new active fibre onto active list
   void push(fibre_t *fresh) { 
-// ::std::cout << "Active set push " << fresh << ::std::endl;
+// ::std::cerr << "Active set push " << fresh << ::std::endl;
     while(lock.test_and_set(::std::memory_order_acquire)); // spin
     fresh->next = active; 
     active = fresh; 
@@ -47,12 +47,12 @@ struct csp_process_t {
   }
   // pop an active fibre off the active list
   fibre_t *pop() {
-// ::std::cout << "Active set pop .. " << ::std::endl;
+// ::std::cerr << "Active set pop .. " << ::std::endl;
     while(lock.test_and_set(::std::memory_order_acquire)); // spin
     fibre_t *tmp = active;
     if(tmp)active = tmp->next;
     lock.clear(::std::memory_order_release); // release lock
-// ::std::cout << "Active set popped .. " << tmp << ::std::endl;
+// ::std::cerr << "Active set popped .. " << tmp << ::std::endl;
     return tmp;
   }
 };

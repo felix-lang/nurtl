@@ -17,6 +17,9 @@ struct channel_t {
   fibre_t *top;
   
   channel_t () : top (nullptr) {}
+  virtual ~channel_t(){ 
+    //::std::cerr << "channel " << this << " destructor" << ::std::endl; 
+  }
 
   // immobile object
   channel_t(channel_t const&)=delete;
@@ -149,7 +152,7 @@ struct channel_endpoint_t {
   }
 
   ~channel_endpoint_t () {
-// ::std::cout << "Channel endpoint " << this << " destructor" << ::std::endl; 
+ //::std::cerr << "Channel endpoint " << this << " destructor, channel " <<  channel << ", refcnt " << channel->refcnt.load() << ::std::endl; 
     switch (channel->refcnt.load()) {
       case 0: break;
       case 1: delete_channel(); break;
@@ -158,16 +161,19 @@ struct channel_endpoint_t {
   }
 
   void delete_channel() {
-// ::std::cout << "Delete channel " << this << ::std::endl;
+ //::std::cerr << "Delete channel " << channel << ", refcnt " << channel->refcnt.load() << ::std::endl;
     fibre_t *top = channel->top;
     channel->top = nullptr;
     channel->refcnt = 0;
     while (top) {
       fibre_t *f = (fibre_t*)clear_lowbit(top);
       fibre_t *tmp = f->next;
+ //::std::cerr << "Channel " << channel << " Deletes fibre " << f << ::std::endl;
       delete_concrete_object(f, allocator);
       top = tmp;
     }
+ //::std::cerr << "Deleting channel " << channel << " now" << ::std::endl;
+    delete_csp_polymorphic_object(channel, allocator);
   }
   
 };

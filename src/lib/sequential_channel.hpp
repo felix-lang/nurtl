@@ -55,8 +55,8 @@ struct sequential_channel_t : channel_t {
         --refcnt;
   // ::std::cout<< "do_write: fibre " << current << ", set channel "<< chan <<" recnt to " << chan->refcnt << ::std::endl;
         st_push_writer(current); // i/o fail: push current onto channel
-        *pcurrent = current->process->pop(); // reset current from active list
       }
+      *pcurrent = current->process->pop(); // reset current from active list
     }
   }
 

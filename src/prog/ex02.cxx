@@ -40,12 +40,8 @@ struct init: con_t {
   ~init() {}
 
   // store parameters in
-  CSP_CALLDEF_START,
-    ::std::list<int> *lin,
-    ::std::list<int> *lout
+  CSP_CALLDEF_START
   CSP_CALLDEF_MID
-    inlst = lin;
-    outlst = lout;
   CSP_CALLDEF_END
 
   CSP_RESUME_START
@@ -56,7 +52,7 @@ struct init: con_t {
     ch3out = make_concurrent_channel(fibre->process->system->system_allocator);
     ch3inp = ch3out->dup();
  
-    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(fibre->process->process_allocator) producer(nullptr))->call(nullptr, ch1out, next))
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(fibre->process->process_allocator) producer(nullptr))->call(next)(ch1out));
     SVC(&spawn_req)
  
   case 1:
@@ -81,14 +77,7 @@ struct init: con_t {
 #include <iostream>
 
 int main() {
-  // create the input list
-  ::std::list<int> inlst;
-  for (auto i = 0; i < 20; ++i) inlst.push_back(i);
-
-  // empty output list
-  ::std::list<int> outlst;
-
-  {
+/*
     ::std::vector<mem_req_t> reqs;
     reqs.push_back(mem_req_t {sizeof(producer),50});
     reqs.push_back(mem_req_t {sizeof(transducer),50});
@@ -107,17 +96,18 @@ int main() {
     alloc_ref_t system_allocator_delegate = new(malloc_free_debugger) system_allocator_t(malloc_free_debugger,malloc_free_debugger, reqs);
     alloc_ref_t system_allocator_debugger = new(malloc_free_debugger) debugging_allocator_t(malloc_free_debugger, system_allocator_delegate, "Sys");
     alloc_ref_t system_allocator = new(malloc_free_debugger) statistics_allocator_t( malloc_free_debugger, system_allocator_debugger, "Sysalloc.stats.txt");
+*/
+    alloc_ref_t malloc_free = new malloc_free_allocator_t; // parent C++ allocator
+    alloc_ref_t malloc_free_debugger = new(malloc_free) debugging_allocator_t(malloc_free, malloc_free, "Malloc");
 
-
-    // initial process will use the system allocator
+    alloc_ref_t system_allocator = malloc_free_debugger;
     alloc_ref_t process_allocator = system_allocator;
 
     // creates the clock too
     system_t *system = new system_t(system_allocator);
 
-    csp_run(system, process_allocator, (new(process_allocator) init(nullptr))-> call(nullptr, &inlst, &outlst));
+    csp_run(system, process_allocator, (new(process_allocator) init(nullptr))-> call(nullptr));
 ::std::cerr << "RUN COMPLETE" << ::std::endl;
     delete system;
-  }
 } 
 

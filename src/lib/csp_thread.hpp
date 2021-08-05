@@ -59,8 +59,12 @@ retry:
     else // the fibre returned without issuing a request so should be dead
     {
       assert(!current->cc); // check it's adead fibre
-      delete_concrete_object(current,current->process->process_allocator);
+      //::std::cerr << "csp_thread: null continuation in fibre, deleting fibre " << current << ::std::endl;
+      auto old_current = current;
+      current = nullptr;
+      delete_concrete_object(old_current,old_current->process->process_allocator);
       current = process->pop();      // get more work
+      //::std::cerr << "csp_thread: new current fibre " << current << ::std::endl;
     }
   }
 
@@ -71,11 +75,11 @@ retry:
 rewait:
   // if the async count > 0 we're waiting for the async op to complete
   // if the running thread count > 0 we're waiting for other threads to stall
-//  ::std::cerr << "Scheduler out of fibres: async count = " << process->async_count.load() << ::std::endl;
+//  //::std::cerr << "Scheduler out of fibres: async count = " << process->async_count.load() << ::std::endl;
   if(process->async_count.load() > 0 || process->running_thread_count.load() > 0) {
     // delay
     {
-//::std::cerr << "Scheduler sleeping (inf)" << ::std::endl;
+////::std::cerr << "Scheduler sleeping (inf)" << ::std::endl;
       ::std::unique_lock<::std::mutex> lk(process->async_lock);
       process->async_wake.wait_for(lk,::std::chrono::milliseconds(100000));
     } // lock released now
@@ -87,7 +91,7 @@ rewait:
     goto rewait;
   }
 
-//  ::std::cerr << "Scheduler out of work, returning" << ::std::endl;
+//  //::std::cerr << "Scheduler out of work, returning" << ::std::endl;
 }
 
 
@@ -101,23 +105,23 @@ void csp_thread_t::do_write(io_request_t *req) {
 
 
 void csp_thread_t::do_spawn_fibre(spawn_fibre_request_t *req) {
-// ::std::cout << "do spawn" << ::std::endl;
+// //::std::cerr << "do spawn" << ::std::endl;
   current->svc_req=nullptr;
   process->push(current);
   con_t *cc= req->tospawn;
   current = new(process->process_allocator) fibre_t(cc, process);
   cc->fibre = current;
-// ::std::cout << "spawned " << current << ::std::endl;
+// //::std::cerr << "spawned " << current << ::std::endl;
 }
 
 void csp_thread_t::do_spawn_fibre_deferred(spawn_fibre_request_t *req) {
-// ::std::cout << "do spawn deferred" << ::std::endl;
+// //::std::cerr << "do spawn deferred" << ::std::endl;
   current->svc_req=nullptr;
   con_t *init = req->tospawn;
   fibre_t *d = new(process->process_allocator) fibre_t(init, process);
   init->fibre = d;
   process->push(d);
-// ::std::cout << "spawn deferred " << d << ::std::endl;
+// //::std::cerr << "spawn deferred " << d << ::std::endl;
 }
 
 static void spawn(csp_process_t *pa, con_t *cc) {
