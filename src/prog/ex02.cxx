@@ -52,7 +52,7 @@ struct init: con_t {
     ch3out = make_concurrent_channel(fibre->process->system->system_allocator);
     ch3inp = ch3out->dup();
  
-    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(fibre->process->process_allocator) producer(nullptr))->call(next)(ch1out));
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(fibre->process->process_allocator) producer(nullptr))->call(next)(ch1out))
     SVC(&spawn_req)
  
   case 1:
@@ -64,7 +64,7 @@ struct init: con_t {
     SVC(&spawn_req)
 
   case 3:
-    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(fibre->process->process_allocator) consumer(nullptr))->call(nullptr, ch3inp, show))
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(fibre->process->process_allocator) consumer(nullptr))->call(show) (ch3inp))
     SVC(&spawn_req)
 
   case 4:

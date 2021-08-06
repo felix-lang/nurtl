@@ -8,6 +8,18 @@ namespace chips {
 // channel uses pointer to C for communication
 // The data MUST be allocated by the process allocator
 template<class C, class F>
+struct sink;
+
+template<class C, class F>
+struct sink_arg2_t {
+  sink_arg2_t (sink<C,F> *sink_a) : p(sink_a) {}
+  sink<C,F> *p;
+  sink<C,F> *operator()(chan_epref_t inchan_a) const;
+};
+
+
+
+template<class C, class F>
 struct sink : con_t {
   chan_epref_t inchan;
   io_request_t r_req;
@@ -19,13 +31,10 @@ struct sink : con_t {
   sink(fibre_t *f) : con_t(f) {}
   ~sink(){}
 
-  CSP_CALLDEF_START,
-    chan_epref_t inchan_a,
-    F f_a
-  CSP_CALLDEF_MID
-    inchan = inchan_a;
+  sink_arg2_t<C,F> call( F f_a) {
     f = f_a;
-  CSP_CALLDEF_END
+    return sink_arg2_t<C,F>(this);
+  }
 
   CSP_RESUME_START
     SVC_READ_REQ(&r_req,&inchan,&inptr);
@@ -42,6 +51,12 @@ struct sink : con_t {
 
   CSP_RESUME_END
 };
+
+template<class C, class F>
+sink<C,F> *sink_arg2_t<C,F>::operator()(chan_epref_t inchan_a)const {
+    p->inchan = inchan_a;
+    return p;
+}
 }
 #endif
 
