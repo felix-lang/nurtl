@@ -28,12 +28,12 @@ struct init: con_t {
   ::std::list<int> *inlst;
   ::std::list<int> *outlst;
   spawn_fibre_request_t spawn_req;
-  chan_epref_t ch1out;
-  chan_epref_t ch1inp;
-  chan_epref_t ch2out;
-  chan_epref_t ch2inp;
-  chan_epref_t ch3out;
-  chan_epref_t ch3inp;
+
+  // to hold the chips
+  producer *prod;
+  bound *boun;
+  transducer *tran;
+  consumer *cons;
 
   init(fibre_t *f) : con_t(f) {}
 
@@ -45,26 +45,35 @@ struct init: con_t {
   CSP_CALLDEF_END
 
   CSP_RESUME_START
-    ch1out = make_concurrent_channel(fibre->process->system->system_allocator);
-    ch1inp = ch1out->dup(); 
-    ch2out = make_concurrent_channel(fibre->process->system->system_allocator);
-    ch2inp = ch2out->dup();
-    ch3out = make_concurrent_channel(fibre->process->system->system_allocator);
-    ch3inp = ch3out->dup();
- 
-    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(fibre->process->process_allocator) producer(nullptr))->call(next)(ch1out))
+
+    // configure the chips
+    prod = (new(fibre->process->process_allocator) producer(nullptr))->setup(next);
+    boun = (new(fibre->process->process_allocator) bound(nullptr))->setup(28);
+    tran = (new(fibre->process->process_allocator) transducer(nullptr))->setup(square);
+    cons = (new(fibre->process->process_allocator) consumer(nullptr))->setup(show);
+
+    // connect in pipline
+    {
+      auto system = fibre->process->system;
+      system->connect_sequential (&prod->outchan, &boun->inchan);
+      system->connect_sequential (&boun->outchan, &tran->inchan);
+      system->connect_sequential (&tran->outchan, &cons->inchan);
+    }
+
+    // spawn pipeline fibres
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, prod)
     SVC(&spawn_req)
  
   case 1:
-    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(fibre->process->process_allocator) bound(nullptr))->call(nullptr, ch1inp, ch2out, 20))
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, boun)
     SVC(&spawn_req)
  
   case 2:
-    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(fibre->process->process_allocator) transducer(nullptr))->call(nullptr, ch2inp, ch3out, square))
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, tran)
     SVC(&spawn_req)
 
   case 3:
-    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(fibre->process->process_allocator) consumer(nullptr))->call(show) (ch3inp))
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, cons)
     SVC(&spawn_req)
 
   case 4:

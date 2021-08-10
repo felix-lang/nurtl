@@ -9,6 +9,17 @@ namespace chips {
 // channels used pointers to D and C for communication
 // The data MUST be allocated by the process allocator
 template<class D, class C, class F>
+struct transducer;
+
+template<class D, class C, class F>
+struct transducer_arg2_t {
+  transducer_arg2_t (transducer<D,C,F> *transducer_a) : p(transducer_a) {}
+  transducer<D,C,F> *p;
+  transducer<D,C,F> *operator()(chan_epref_t inchan_a, chan_epref_t outchan_a) const;
+};
+
+
+template<class D, class C, class F>
 struct transducer : con_t {
   chan_epref_t inchan;
   chan_epref_t outchan;
@@ -23,15 +34,12 @@ struct transducer : con_t {
   transducer(fibre_t *f) : con_t(f) {}
   ~transducer(){}
 
-  CSP_CALLDEF_START,
-    chan_epref_t inchan_a,
-    chan_epref_t outchan_a,
-    F f_a
-  CSP_CALLDEF_MID
-    inchan = inchan_a;
-    outchan = outchan_a;
+  transducer_arg2_t<D,C,F> call( F f_a) {
     f = f_a;
-  CSP_CALLDEF_END
+    return transducer_arg2_t<D,C,F>(this);
+  }
+
+  transducer *setup(F f_a) { f = f_a; return this; }
 
   CSP_RESUME_START
     SVC_READ_REQ(&r_req,&inchan,&inptr);
@@ -50,6 +58,26 @@ struct transducer : con_t {
   CSP_RESUME_END
 };
 
+template<class D, class C, class F>
+transducer<D,C,F> *transducer_arg2_t<D,C,F>::operator()(chan_epref_t inchan_a, chan_epref_t outchan_a)const {
+  p->inchan = inchan_a;
+  p->outchan = outchan_a;
+  return p;
+}
+
+// ------------------------------------------------------
+// Bound
+// A transducer which copies inp9ut to output a fixed number of times then suicides
+template<class T>
+struct bound;
+
+template<class T>
+struct bound_arg2_t {
+  bound_arg2_t (bound<T> *bound_a) : p(bound_a) {}
+  bound<T> *p;
+  bound<T> *operator()(chan_epref_t inchan_a, chan_epref_t outchan_a) const;
+};
+
 template<class T>
 struct bound : con_t {
   chan_epref_t inchan;
@@ -64,15 +92,13 @@ struct bound : con_t {
   bound(fibre_t *f) : con_t(f) {}
   ~bound(){}
 
-  CSP_CALLDEF_START,
-    chan_epref_t inchan_a,
-    chan_epref_t outchan_a,
-    size_t counter_a 
-  CSP_CALLDEF_MID
-    inchan = inchan_a;
-    outchan = outchan_a;
+  bound_arg2_t<T> call(size_t counter_a) {
     counter = counter_a;
-  CSP_CALLDEF_END
+    return bound_arg2_t<T>(this);
+  }
+
+  bound *setup(size_t counter_a) { counter = counter_a; return this; }
+
 
   CSP_RESUME_START
     SVC_READ_REQ(&r_req,&inchan,&ptr);
@@ -93,6 +119,14 @@ struct bound : con_t {
 
   CSP_RESUME_END
 };
+
+template<class T>
+bound<T> *bound_arg2_t<T>::operator()(chan_epref_t inchan_a, chan_epref_t outchan_a)const {
+    p->inchan = inchan_a;
+    p->outchan = outchan_a;
+    return p;
+}
+
 
 
 } // namespace

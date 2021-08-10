@@ -35,6 +35,8 @@ struct source : con_t {
     return source_arg2_t<C,F>(this);
   }
 
+  source *setup(F f_a) { f = f_a; return this; }
+
   CSP_RESUME_START
     SVC_WRITE_REQ(&w_req,&outchan,&outptr);
 

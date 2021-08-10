@@ -36,6 +36,8 @@ struct sink : con_t {
     return sink_arg2_t<C,F>(this);
   }
 
+  sink *setup(F f_a) { f = f_a; return this; }
+
   CSP_RESUME_START
     SVC_READ_REQ(&r_req,&inchan,&inptr);
 

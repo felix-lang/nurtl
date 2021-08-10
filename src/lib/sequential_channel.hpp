@@ -65,7 +65,16 @@ struct sequential_channel_t : channel_t {
 
 };
 
-chan_epref_t make_sequantial_channel(alloc_ref_t a) {
+chan_epref_t make_sequential_channel(alloc_ref_t a) {
   return acquire_channel(a, new(a) sequential_channel_t);
 }
+
+
+void system_t::connect_sequential (chan_epref_t *left, chan_epref_t *right) {
+  auto chleft= make_sequential_channel(system_allocator);
+  auto chright= chleft ->dup(); 
+  *left = chleft;
+  *right= chright;
+}
+
 

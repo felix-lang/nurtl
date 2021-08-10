@@ -94,3 +94,11 @@ chan_epref_t make_concurrent_channel(alloc_ref_t a) {
   return acquire_channel(a, new(a) concurrent_channel_t);
 }
 
+void system_t::connect_concurrent (chan_epref_t *left, chan_epref_t *right) {
+  auto chleft= make_concurrent_channel(system_allocator);
+  auto chright= chleft->dup(); 
+  *left = chleft;
+  *right= chright;
+}
+
+
