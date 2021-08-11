@@ -1,2 +1,48 @@
-# nurtl
-New run time development
+# Communicating Sequential Processes
+
+This is the new real time kernel implementing Communicating Sequential Processes.
+With this software a *system* is a collection of *processes* which communicate
+using *channels*. Systems can communicate with each other and the environment
+by connecting to *devices*.
+
+The unit of modularity is the *routine*. In a single threaded system, a routine
+is a *coroutine* which when spawned implements a *fibre of control*, fibres are
+cooperatively multi-tasked and not pre-empted.
+
+In a multithreaded environment, a fibres can execute *concurrently*.
+
+The system allows the construction of many allocators with distinct
+properties suited to their intended use. The *system allocator* allocates
+all channels. Typical coroutines are infinite loops and are ideal for
+high performance signal processing.
+
+Channels are owned by *channel endpoints* which in turn are accessed
+by smart pointers called *channel endpoint references*, 
+the machinery provides two level  reference counting in a unique way which 
+ensures a fibre is terminated when I/O operations cannot succeed.
+
+Channel I/O provides a higher level mechanism to implement *continuation
+passing*. A *continuation* is a routine which has been *suspened* due to one
+of three operations: **reading** a channel, **writing** a channel, or **spawning**
+a new fibre. Suspended continuations waiting for I/O are made active after
+an I/O operation synchronises the reader and writer. When a fibre spawns
+another both are active. A *scheduler* picks an active fibre to *resume*
+and continues executing it where it previously left off.
+
+A fibre termintes by **suicide**, or by reading or writing a channel
+with only one endpoint (which it owns). In the latter case the fibre is
+**starved** or **blocked**, respectively.
+
+Routines in the system are represented by a class with a ``resume()`` method
+continaing non-static member variables of type ``chan_epref_t``, channel
+endpoint references. Three system methods:
+
+1. ``system_t::connect_sequential(chan_epref_t*, chan_epref_t*)``
+2. ``system_t::connect_conncurrent(chan_epref_t*, chan_epref_t*)``
+3. ``system_t::connect_async(chan_epref_t*, chan_epref_t*)``
+
+can be used to construct arbitrary circuits. Channel I/O is always used
+to **move** a pointer from a writer to a reader, so that the reader
+has ownership of the object pointed at. A smart reference counting
+pointer can be used if shared ownership is desired.
+
