@@ -20,7 +20,7 @@ struct sink_arg2_t {
 
 
 template<class C, class F>
-struct sink : con_t {
+struct sink : coroutine_t {
   chan_epref_t inchan;
   io_request_t r_req;
   C *inptr;
@@ -28,7 +28,6 @@ struct sink : con_t {
 
   CSP_SIZE
 
-  sink(fibre_t *f) : con_t(f) {}
   ~sink(){}
 
   sink_arg2_t<C,F> call( F f_a) {

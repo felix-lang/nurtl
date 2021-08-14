@@ -19,7 +19,7 @@ struct source_arg2_t {
 };
 
 template<class C, class F>
-struct source : con_t {
+struct source : coroutine_t {
   chan_epref_t outchan;
   io_request_t w_req;
   C *outptr;
@@ -27,7 +27,6 @@ struct source : con_t {
 
   CSP_SIZE
 
-  source(fibre_t *f) : con_t(f) {}
   ~source(){}
 
   source_arg2_t<C,F> call( F f_a) {

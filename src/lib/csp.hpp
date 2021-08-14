@@ -39,20 +39,30 @@ struct chan_epref_t;
 
 #include "con.hpp"
 #include "fibre.hpp"
+
 #include "csp_process.hpp"
 #include "svc.hpp"
 
+con_t *coroutine_t::return_control()
+{
+::std::cerr << "Coroutine " << this << " returns control" << ::std::endl;
+  delete_csp_polymorphic_object(this,fibre->process->process_allocator);
+  return nullptr;
+}
+
+con_t *subroutine_t::return_control() {
+  auto tmp = caller;
+  delete_csp_polymorphic_object(this,fibre->process->process_allocator);
+  return tmp;
+}
+
+
 // resolve circular reference
 fibre_t::~fibre_t()
- {
-    //::std::cerr << "Fibre destructor " << this << ::std::endl;
-    while(cc) {
-    //::std::cerr << "Delete continuation " << cc << ::std::endl;
-      con_t *tmp = cc->caller;
-      delete_csp_polymorphic_object(cc,process->process_allocator);
-      cc = tmp;
-    }
-  }
+{
+  ::std::cerr << "Fibre destructor " << this << ::std::endl;
+  while(cc) cc= cc->return_control(); 
+}
 
 #include "channel.hpp"
 #include "csp_thread.hpp"
@@ -61,11 +71,7 @@ fibre_t::~fibre_t()
 #include "async_channel.hpp"
 #include "clock.hpp"
 
-#define CSP_RETURN {\
-  con_t *tmp = caller;\
-  delete_csp_polymorphic_object(this, fibre->process->process_allocator);\
-  return tmp;\
-}
+#define CSP_RETURN return return_control();
 
 #define CSP_CALLDEF_START \
   con_t *call(con_t *caller_a
@@ -78,6 +84,15 @@ fibre_t::~fibre_t()
   return this;\
 }
 
+#define CSP_CODEF_START \
+  con_t *setup(
+
+#define CSP_CODEF_MID ){\
+  pc = 0;
+
+#define CSP_CODEF_END \
+  return this;\
+}
 #define CSP_RESUME_START\
   con_t *resume() override {\
   switch(pc++){\

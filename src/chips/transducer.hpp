@@ -20,7 +20,7 @@ struct transducer_arg2_t {
 
 
 template<class D, class C, class F>
-struct transducer : con_t {
+struct transducer : coroutine_t {
   chan_epref_t inchan;
   chan_epref_t outchan;
   io_request_t r_req;
@@ -31,7 +31,6 @@ struct transducer : con_t {
 
   CSP_SIZE
 
-  transducer(fibre_t *f) : con_t(f) {}
   ~transducer(){}
 
   transducer_arg2_t<D,C,F> call( F f_a) {
@@ -79,7 +78,7 @@ struct bound_arg2_t {
 };
 
 template<class T>
-struct bound : con_t {
+struct bound : coroutine_t {
   chan_epref_t inchan;
   chan_epref_t outchan;
   io_request_t r_req;
@@ -89,7 +88,6 @@ struct bound : con_t {
 
   CSP_SIZE
 
-  bound(fibre_t *f) : con_t(f) {}
   ~bound(){}
 
   bound_arg2_t<T> call(size_t counter_a) {

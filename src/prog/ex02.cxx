@@ -24,7 +24,7 @@ using consumer = chips::sink<int, show_t>;
 
 #include "csp.hpp"
 #include "chips.hpp"
-struct init: con_t {
+struct init: coroutine_t {
   ::std::list<int> *inlst;
   ::std::list<int> *outlst;
   spawn_fibre_request_t spawn_req;
@@ -35,22 +35,15 @@ struct init: con_t {
   transducer *tran;
   consumer *cons;
 
-  init(fibre_t *f) : con_t(f) {}
-
   ~init() {}
-
-  // store parameters in
-  CSP_CALLDEF_START
-  CSP_CALLDEF_MID
-  CSP_CALLDEF_END
 
   CSP_RESUME_START
 
     // configure the chips
-    prod = (new(fibre->process->process_allocator) producer(nullptr))->setup(next);
-    boun = (new(fibre->process->process_allocator) bound(nullptr))->setup(28);
-    tran = (new(fibre->process->process_allocator) transducer(nullptr))->setup(square);
-    cons = (new(fibre->process->process_allocator) consumer(nullptr))->setup(show);
+    prod = (new(fibre->process->process_allocator) producer)->setup(next);
+    boun = (new(fibre->process->process_allocator) bound)->setup(28);
+    tran = (new(fibre->process->process_allocator) transducer)->setup(square);
+    cons = (new(fibre->process->process_allocator) consumer)->setup(show);
 
     // connect in pipline
     {
@@ -115,7 +108,7 @@ int main() {
     // creates the clock too
     system_t *system = new system_t(system_allocator);
 
-    csp_run(system, process_allocator, (new(process_allocator) init(nullptr))-> call(nullptr));
+    csp_run(system, process_allocator, (new(process_allocator) init));
 ::std::cerr << "RUN COMPLETE" << ::std::endl;
     delete system;
 } 

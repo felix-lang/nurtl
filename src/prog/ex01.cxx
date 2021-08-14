@@ -8,26 +8,17 @@
 
 // TEST CASE
 
-struct hello : con_t {
-  hello(fibre_t *f) : con_t(f) {}
+struct hello : coroutine_t {
 
-  CSP_CALLDEF_START
-  CSP_CALLDEF_MID
-  CSP_CALLDEF_END
   CSP_RESUME_START
     ::std::cerr << "Hello World" << ::std::endl;
-    //CSP_RETURN
-    {
-      con_t *tmp = caller;
-      delete_concrete_object(this, fibre->process->process_allocator);
-      return tmp;
-    }
+    CSP_RETURN
   CSP_RESUME_END
-  size_t size() const override { return sizeof(hello); }
+  CSP_SIZE
 };
 
 
-struct producer : con_t {
+struct producer : coroutine_t {
   ::std::list<int> *plst;
   ::std::list<int>::iterator it;
   chan_epref_t out;
@@ -37,16 +28,15 @@ struct producer : con_t {
   };
   io_request_t w_req;
 
-  producer(fibre_t *f) : con_t(f) {}
   ~producer() { }
 
-  CSP_CALLDEF_START,
+  CSP_CODEF_START
     ::std::list<int> *plst_a,
     chan_epref_t outchan_a
-  CSP_CALLDEF_MID
+  CSP_CODEF_MID
     plst = plst_a;
     out = outchan_a;
-  CSP_CALLDEF_END
+  CSP_CODEF_END
 
   CSP_RESUME_START
     it = plst->begin();
@@ -61,10 +51,10 @@ struct producer : con_t {
     SVC(&w_req)
 
   CSP_RESUME_END
-  size_t size() const override { return sizeof(producer); }
+  CSP_SIZE
 };
 
-struct consumer: con_t {
+struct consumer: coroutine_t {
   ::std::list<int> *plst;
   union {
     void *iodata;
@@ -73,16 +63,15 @@ struct consumer: con_t {
   io_request_t r_req;
   chan_epref_t inp;
 
-  consumer(fibre_t *f) : con_t(f) {}
   ~consumer() {}
 
-  CSP_CALLDEF_START,
+  CSP_CODEF_START
     ::std::list<int> *plst_a,
     chan_epref_t inchan_a
-  CSP_CALLDEF_MID
+  CSP_CODEF_MID
     plst = plst_a;
     inp = inchan_a;
-  CSP_CALLDEF_END
+  CSP_CODEF_END
 
   CSP_RESUME_START  
     SVC_READ_REQ(&r_req,&inp,&iodata)
@@ -96,14 +85,14 @@ struct consumer: con_t {
     CSP_GOTO(1)
 
   CSP_RESUME_END
-  size_t size() const override { return sizeof(consumer); }
+  CSP_SIZE
 };
 
-struct square : con_t {
+struct square : subroutine_t {
   int inp;
   int *pout;
 
-  square(fibre_t *f) : con_t(f) {}
+  square(fibre_t *f) : subroutine_t(f) {}
  
   CSP_CALLDEF_START,
     int *pout_a,
@@ -122,11 +111,11 @@ struct square : con_t {
       return tmp;
     }
   CSP_RESUME_END
-  size_t size() const override { return sizeof(square); }
+  CSP_SIZE
 };
 
 
-struct transducer: con_t {
+struct transducer: coroutine_t {
   union {
     void *iodata;
     int value;
@@ -136,17 +125,15 @@ struct transducer: con_t {
   chan_epref_t inp;
   chan_epref_t out;
 
-  transducer(fibre_t *f) : con_t(f) {}
-
   ~transducer() {}
 
-  CSP_CALLDEF_START,
+  CSP_CODEF_START
     chan_epref_t inchan_a,
     chan_epref_t outchan_a
-  CSP_CALLDEF_MID 
+  CSP_CODEF_MID 
     inp = inchan_a;
     out = outchan_a;
-  CSP_CALLDEF_END
+  CSP_CODEF_END
   
   CSP_RESUME_START
     SVC_READ_REQ(&r_req,&inp,&iodata)
@@ -164,11 +151,11 @@ struct transducer: con_t {
     SVC(&w_req)
 
   CSP_RESUME_END
-  size_t size() const override { return sizeof(transducer); }
+  CSP_SIZE
 };
 
 
-struct init: con_t {
+struct init: coroutine_t {
   ::std::list<int> *inlst;
   ::std::list<int> *outlst;
   spawn_fibre_request_t spawn_req;
@@ -182,18 +169,16 @@ struct init: con_t {
   double *pwaituntil;
   ::std::shared_ptr<csp_clock_t> clock;
 
-  init(fibre_t *f) : con_t(f) {}
-
   ~init() {}
 
   // store parameters in
-  CSP_CALLDEF_START,
+  CSP_CODEF_START
     ::std::list<int> *lin,
     ::std::list<int> *lout
-  CSP_CALLDEF_MID
+  CSP_CODEF_MID
     inlst = lin;
     outlst = lout;
-  CSP_CALLDEF_END
+  CSP_CODEF_END
 
   CSP_RESUME_START
     ch1out = make_concurrent_channel(fibre->process->system->system_allocator);
@@ -201,19 +186,19 @@ struct init: con_t {
     ch2out = make_concurrent_channel(fibre->process->system->system_allocator);
     ch2inp = ch2out->dup();
  
-    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(fibre->process->process_allocator) producer(nullptr))->call(nullptr, inlst, ch1out))
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(fibre->process->process_allocator) producer)->setup(inlst, ch1out))
     SVC(&spawn_req)
  
   case 1:
-    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(fibre->process->process_allocator) transducer(nullptr))->call(nullptr, ch1inp, ch2out))
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(fibre->process->process_allocator) transducer)->setup(ch1inp, ch2out))
     SVC(&spawn_req)
  
   case 2:
-    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(fibre->process->process_allocator) consumer(nullptr))->call(nullptr, outlst,ch2inp))
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(fibre->process->process_allocator) consumer)->setup(outlst,ch2inp))
     SVC(&spawn_req)
  
   case 3:
-    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(fibre->process->process_allocator) hello(nullptr))->call(nullptr))
+    SVC_SPAWN_FIBRE_DEFERRED_REQ(&spawn_req, (new(fibre->process->process_allocator) hello))
     SVC(&spawn_req)
 
   case 4:
@@ -245,7 +230,7 @@ struct init: con_t {
 
 
   CSP_RESUME_END
-  size_t size() const override { return sizeof(init); }
+  CSP_SIZE
 }; // init class
 
 #include <iostream>
@@ -287,7 +272,7 @@ int main() {
     // creates the clock too
     system_t *system = new system_t(system_allocator);
 
-    csp_run(system, process_allocator, (new(process_allocator) init(nullptr))-> call(nullptr, &inlst, &outlst));
+    csp_run(system, process_allocator, (new(process_allocator) init)->setup(&inlst, &outlst));
 ::std::cerr << "RUN COMPLETE" << ::std::endl;
     delete system;
   }
