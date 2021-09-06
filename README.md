@@ -6,7 +6,8 @@ using *channels*. Systems can communicate with each other and the environment
 by connecting to *devices*.
 
 # Hello World
-
+## The coroutine
+```
   struct hello_world : coroutine_t {
     size_t size()const { return sizeof(*this); }
     con_t *resume() {
@@ -14,7 +15,9 @@ by connecting to *devices*.
       return return_control();
     }
   };
-
+```
+# The mainline
+```
   int main() {
     alloc_ref_t system_allocator = new malloc_free_allocator_t;
     auto process_allocator = system_allocator;
@@ -23,5 +26,6 @@ by connecting to *devices*.
     csp_run(system, process_allocator, hello);
     delete system;
   }
+```
 
 
