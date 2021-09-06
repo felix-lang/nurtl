@@ -12,7 +12,7 @@ struct hello : coroutine_t {
 
   CSP_RESUME_START
     ::std::cerr << "Hello World" << ::std::endl;
-    CSP_RETURN
+    CSP_COSUICIDE
   CSP_RESUME_END
   CSP_SIZE
 };
@@ -44,7 +44,7 @@ struct producer : coroutine_t {
 
   case 1:
     if(it == plst->end()) { 
-      CSP_RETURN
+      CSP_COSUICIDE
     }
     value = *it++;
     pc = 1;
@@ -104,7 +104,6 @@ struct square : subroutine_t {
 
   CSP_RESUME_START
     *pout = inp * inp;
-    //CSP_RETURN
     {
       con_t *tmp = caller;
       delete_concrete_object(this, fibre->process->process_allocator);
@@ -226,7 +225,7 @@ struct init: coroutine_t {
   case 5:
     // if this doesn't print, we didn't resume after the sleep correctly
     ::std::cerr<<"****** INIT Sleep Over ********" << ::std::endl;
-    CSP_RETURN 
+    CSP_COSUICIDE
 
 
   CSP_RESUME_END

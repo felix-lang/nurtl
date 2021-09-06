@@ -12,6 +12,11 @@ test2:
 	clang++ -g -std=c++17 -ferror-limit=1 -O2 -Isrc/lib -Isrc/chips src/prog/ex02.cxx -o ex02
 	./ex02
 
+tut1:
+	clang++ -g -std=c++17 -ferror-limit=1 -O2 -Isrc/lib -Isrc/chips src/prog/tut01.cxx -o tut01
+	./tut01
+
+
 docs:
 	sh texify.sh csp_theory
 	sh texify.sh csp_howto

@@ -113,7 +113,7 @@ struct bound : coroutine_t {
     SVC(&w_req);
 
   finish:
-    CSP_RETURN
+    CSP_COSUICIDE
 
   CSP_RESUME_END
 };

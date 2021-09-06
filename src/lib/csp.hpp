@@ -45,7 +45,7 @@ struct chan_epref_t;
 
 con_t *coroutine_t::return_control()
 {
-::std::cerr << "Coroutine " << this << " returns control" << ::std::endl;
+//::std::cerr << "Coroutine " << this << " returns control" << ::std::endl;
   delete_csp_polymorphic_object(this,fibre->process->process_allocator);
   return nullptr;
 }
@@ -60,7 +60,7 @@ con_t *subroutine_t::return_control() {
 // resolve circular reference
 fibre_t::~fibre_t()
 {
-  ::std::cerr << "Fibre destructor " << this << ::std::endl;
+  //::std::cerr << "Fibre destructor " << this << ::std::endl;
   while(cc) cc= cc->return_control(); 
 }
 
@@ -71,7 +71,8 @@ fibre_t::~fibre_t()
 #include "async_channel.hpp"
 #include "clock.hpp"
 
-#define CSP_RETURN return return_control();
+#define CSP_SUBRETURN return return_control();
+#define CSP_COSUICIDE return return_control();
 
 #define CSP_CALLDEF_START \
   con_t *call(con_t *caller_a

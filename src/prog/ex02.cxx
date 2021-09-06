@@ -70,7 +70,7 @@ struct init: coroutine_t {
     SVC(&spawn_req)
 
   case 4:
-    CSP_RETURN
+    CSP_COSUICIDE
 
   CSP_RESUME_END
   CSP_SIZE
