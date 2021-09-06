@@ -1,5 +1,5 @@
 # Communicating Sequential Processes
-
+## Architrecture
 This is the new real time kernel implementing Communicating Sequential Processes.
 With this software a *system* is a collection of *processes* which communicate
 using *channels*. Systems can communicate with each other and the environment
@@ -33,16 +33,4 @@ A fibre termintes by **suicide**, or by reading or writing a channel
 with only one endpoint (which it owns). In the latter case the fibre is
 **starved** or **blocked**, respectively.
 
-Routines in the system are represented by a class with a ``resume()`` method
-continaing non-static member variables of type ``chan_epref_t``, channel
-endpoint references. Three system methods:
-
-1. ``system_t::connect_sequential(chan_epref_t*, chan_epref_t*)``
-2. ``system_t::connect_conncurrent(chan_epref_t*, chan_epref_t*)``
-3. ``system_t::connect_async(chan_epref_t*, chan_epref_t*)``
-
-can be used to construct arbitrary circuits. Channel I/O is always used
-to **move** a pointer from a writer to a reader, so that the reader
-has ownership of the object pointed at. A smart reference counting
-pointer can be used if shared ownership is desired.
 
