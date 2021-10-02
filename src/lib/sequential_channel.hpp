@@ -14,8 +14,10 @@ struct sequential_channel_t : channel_t {
   void signal() override  {} 
 
   void read(void **target, fibre_t **pcurrent) override  {
+//::std::cerr << *pcurrent << " Sequential Channel read begins " << ::std::endl;
     fibre_t *current = *pcurrent;
     fibre_t *w = st_pop_writer();
+//::std::cerr << *pcurrent << " Sequential Channel read finds writer " << w << ::std::endl;
     if(w) {
       ++refcnt;
       *target =
@@ -24,18 +26,22 @@ struct sequential_channel_t : channel_t {
     }
     else {
       if(refcnt == 1) {
+        *pcurrent = current->process->pop(); // active list
+//::std::cerr << "channel read " << this << " deletes fibre " << current << ::std::endl;
         delete_concrete_object(current,current->process->process_allocator);
       } else {
         --refcnt;
         st_push_reader(current);
+        *pcurrent = current->process->pop(); // active list
       }
-      *pcurrent = current->process->pop(); // active list
     }
   }
 
   void write(void **source, fibre_t **pcurrent) override  {
+//::std::cerr << *pcurrent << " Sequential Channel write begins " << ::std::endl;
     fibre_t *current = *pcurrent;
     fibre_t *r = st_pop_reader();
+//::std::cerr << *pcurrent << " Sequential Channel write finds reader " << r << ::std::endl;
     if(r) {
       ++refcnt;
       *r->svc_req->io_request.pdata = *source;
@@ -50,13 +56,14 @@ struct sequential_channel_t : channel_t {
     }
     else {
       if(refcnt == 1) {
+        *pcurrent = current->process->pop(); // reset current from active list
+//::std::cerr << "channel write " << this << " deletes fibre " << current << ::std::endl;
         delete_concrete_object(current,current->process->process_allocator);
       } else {
         --refcnt;
-  // ::std::cout<< "do_write: fibre " << current << ", set channel "<< chan <<" recnt to " << chan->refcnt << ::std::endl;
         st_push_writer(current); // i/o fail: push current onto channel
+        *pcurrent = current->process->pop(); // reset current from active list
       }
-      *pcurrent = current->process->pop(); // reset current from active list
     }
   }
 

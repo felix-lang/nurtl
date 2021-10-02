@@ -55,15 +55,15 @@ struct async_channel_t : concurrent_channel_t {
     }
     else {
       if(refcnt == 1) {
-        delete_concrete_object(current,current->process->process_allocator);
         *pcurrent = current->process->pop(); // reset current from active list
+        delete_concrete_object(current,current->process->process_allocator);
         return; // to prevent signalling a deleted channel
       } else {
         --refcnt;
         st_push_reader(current);
         unlock();
+        *pcurrent = current->process->pop(); // active list
       }
-      *pcurrent = current->process->pop(); // active list
     }
     signal();
   }

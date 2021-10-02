@@ -46,13 +46,14 @@ struct concurrent_channel_t : sequential_channel_t {
     else {
       if(refcnt == 1) {
         //::std::cerr << "Concurrent channel read deletes requesting fibre " << current << :: std::endl;
+        *pcurrent = current->process->pop(); // active list
         delete_concrete_object(current,current->process->process_allocator);
       } else {
         --refcnt;
         st_push_reader(current);
         unlock();
+        *pcurrent = current->process->pop(); // active list
       }
-      *pcurrent = current->process->pop(); // active list
     }
   }
 
@@ -76,14 +77,15 @@ struct concurrent_channel_t : sequential_channel_t {
     else {
       if(refcnt == 1) {
         //::std::cerr << "Concurrent channel write deletes requesting fibre " << current << :: std::endl;
+        *pcurrent = current->process->pop(); // reset current from active list
         delete_concrete_object(current,current->process->process_allocator);
       } else {
         --refcnt;
   // ::std::cout<< "do_write: fibre " << current << ", set channel "<< chan <<" recnt to " << chan->refcnt << ::std::endl;
         st_push_writer(current); // i/o fail: push current onto channel
         unlock();
+        *pcurrent = current->process->pop(); // reset current from active list
       }
-      *pcurrent = current->process->pop(); // reset current from active list
     }
   }
 

@@ -19,7 +19,9 @@ struct csp_thread_t {
 };
 
 extern void csp_run(system_t *system, alloc_ref_t process_allocator, con_t *init) {
+::std::cerr << "csp_run start" << ::std::endl;
   csp_thread_t (new(system->system_allocator) csp_process_t(system, process_allocator)).sync_run(init);
+::std::cerr << "csp_run over " << ::std::endl;
 }
 
 // scheduler subroutine runs until there is no work to do

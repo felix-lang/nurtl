@@ -16,7 +16,7 @@ struct channel_t {
   ::std::atomic_size_t refcnt;
   fibre_t *top;
   
-  channel_t () : top (nullptr) {}
+  channel_t () : top (nullptr), refcnt(1) {}
   virtual ~channel_t(){ 
     //::std::cerr << "channel " << this << " destructor" << ::std::endl; 
   }
@@ -152,7 +152,7 @@ struct channel_endpoint_t {
   }
 
   ~channel_endpoint_t () {
- //::std::cerr << "Channel endpoint " << this << " destructor, channel " <<  channel << ", refcnt " << channel->refcnt.load() << ::std::endl; 
+// ::std::cerr << "Channel endpoint " << this << " destructor, channel " <<  channel << ", refcnt " << channel->refcnt.load() << ::std::endl; 
     switch (channel->refcnt.load()) {
       case 0: break;
       case 1: delete_channel(); break;
@@ -161,14 +161,14 @@ struct channel_endpoint_t {
   }
 
   void delete_channel() {
- //::std::cerr << "Delete channel " << channel << ", refcnt " << channel->refcnt.load() << ::std::endl;
+ ::std::cerr << "Delete channel " << channel << ", refcnt " << channel->refcnt.load() << ::std::endl;
     fibre_t *top = channel->top;
     channel->top = nullptr;
-    channel->refcnt = 0;
+    channel->refcnt.store(0);
     while (top) {
       fibre_t *f = (fibre_t*)clear_lowbit(top);
       fibre_t *tmp = f->next;
- //::std::cerr << "Channel " << channel << " Deletes fibre " << f << ::std::endl;
+// ::std::cerr << "Channel " << channel << " Deletes fibre " << f << ", next=" << tmp << ::std::endl;
       delete_concrete_object(f, allocator);
       top = tmp;
     }
@@ -192,8 +192,10 @@ chan_epref_t::chan_epref_t(chan_epref_t &p) {
 // uses allocator passed to endpoint on construction to delete it
 chan_epref_t::~chan_epref_t() { 
   if (endpoint) {
-    if(endpoint->refcnt == 1) 
+    if(endpoint->refcnt == 1) { 
+//::std::cerr << "Endpoint ref " << this << " deletes endpoint " << endpoint << ::std::endl;
       delete_concrete_object(endpoint, endpoint->allocator); 
+    }
     else 
       --endpoint->refcnt; 
   }

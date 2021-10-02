@@ -16,6 +16,10 @@ tut1:
 	clang++ -g -std=c++17 -ferror-limit=1 -O2 -Isrc/lib -Isrc/chips src/prog/tut01.cxx -o tut01
 	./tut01
 
+tut2:
+	clang++ -g -std=c++17 -ferror-limit=1 -O1 -Isrc/lib -Isrc/chips src/prog/tut02.cxx -o tut02
+	./tut02
+
 
 docs:
 	sh texify.sh csp_theory

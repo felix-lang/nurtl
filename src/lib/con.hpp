@@ -2,6 +2,7 @@
 struct con_t {
   fibre_t *fibre;
   int pc;        // program counter
+  con_t () : pc(0), fibre(nullptr) {}
   virtual con_t *return_control()=0;
   virtual con_t *resume()=0;
   virtual size_t size()const=0;
