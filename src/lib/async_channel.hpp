@@ -37,6 +37,7 @@ struct async_channel_t : concurrent_channel_t {
   ::std::mutex cv_lock;
 
   void signal() override { cv.notify_all(); }
+
   size_t size() const override { return sizeof(async_channel_t); }
 
   async_channel_t () {}
@@ -55,6 +56,7 @@ struct async_channel_t : concurrent_channel_t {
     }
     else {
       if(refcnt == 1) {
+::std::cerr << "Async channel " << this << " read detects refcnt 1" << ::std::endl;
         *pcurrent = current->process->pop(); // reset current from active list
         delete_concrete_object(current,current->process->process_allocator);
         return; // to prevent signalling a deleted channel
@@ -88,6 +90,7 @@ struct async_channel_t : concurrent_channel_t {
     }
     else {
       if(refcnt == 1) {
+::std::cerr << "Async channel " << this << " write detects refcnt 1" << ::std::endl;
         delete_concrete_object(current,current->process->process_allocator);
         *pcurrent = current->process->pop(); // reset current from active list
         return; // to prevent signalling a deleted channel

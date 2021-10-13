@@ -23,7 +23,4 @@ tut2:
 
 docs:
 	sh texify.sh csp_theory
-	sh texify.sh csp_howto
-	sh texify.sh csp_tutorial
-	sh texify.sh csp_reference
 

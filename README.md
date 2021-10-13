@@ -227,7 +227,7 @@ struct init : coroutine_t {
         out = inp->dup(); 
 
         // setup the spawn request control block
-        spawn_req.svc_code = spawn_fibre_request_code_e;
+        spawn_req.svc_code = spawn_fibre_deferred_request_code_e;
 
         // construct the consumer
         consumer = new(fibre->process->process_allocator) printer<int>;
@@ -247,7 +247,7 @@ struct init : coroutine_t {
         // assign the channel endpoint
         prod->out = out;
 
-        // spawn the producer deferring execution
+        // spawn the producer using deferring execution
         spawn_req.tospawn = prod;
         SVC(&spawn_req);
 
@@ -259,10 +259,35 @@ struct init : coroutine_t {
     return this; // dummy return to shut compiler up
   }
 };
-
-
-
 ```
+
+We have created a sequential channel with one endpoint and acquired a reference
+to it. We then call the **dup** method on the reference to obtain a new reference
+to another endpoint to the same channel.
+
+Channel I/O in our system depends on routines of a fibre having access to 
+exactly one endpoint. If two enpoints are passed, the automatic detection
+of an I/O operation that would block forever due to the lack of a second
+endpoint being help by an active fibre will not work, and the system
+may hang rather than terminate correctly.
+
+Indeed the fibre spawned by the **init** routine breaks the rule, since it continues to hold
+access to an endpoint of a channel after passing a copy to another fibre.
+However the routine does not do any I/O and terminates correctly, at which time
+the requirement is finally met, and blocked fibres can now correctly lead
+to the termination of routines. Using **spawn_deferred** allows the **init**
+routine to terminate first so that the producer and consumer terminate at the
+earliest possible time.
+
+[At this time there is no **reset** method to release an endpoint from its reference]
+
+Notice carefully that the autoincrement of the **pc** variable in the switch 
+statement argument suffices to manage control flow in sequential code, it being
+understood that the **SVC** macro implements a service call by returning
+control to the scheduler. Therefore it is essential to add a case label
+after every return instruction including **SVC** corresponding to the
+value **pc** will have when the **resume** method is next called.
+
 
 Finally we can run the pipeline.
 ```
@@ -279,4 +304,14 @@ Finally we can run the pipeline.
   }
 ```
 
+Here we simply construct an system allocator and copy the reference to it
+for the process allocator. We use the system allocator that to construct a system
+object. Then we create a suspension from coroutine **init** and pass it to the
+**csp_run** function along with the system object and process allocator.
+
+The **init** object is then run as a fibre, creating our pipeline,
+and when all is done the **csp_run** function returns and we delete
+the system object.
+
+ 
 
