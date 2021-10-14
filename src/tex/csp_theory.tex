@@ -153,6 +153,25 @@ in the owner lifetime.
 The core semantic operations of the system are construction of
 processes, threads, and fibres, and channel I/O.
 
+\subsection{Termination}
+The termination semantics of our CSP model are novel. A correctly constructed
+system cannot deadlock. Instead, the system is guarranteed
+to terminate if, and only if, there is no work being done, and no possibility
+of further work appearing.
+
+When a single thread is idle but other threads are running, the running jobs
+can generate new work which may be taken up by the idle thread. So an idle
+thread must wait in this case.
+
+If there is no work for any thread, but an async operation is pending,
+further work will be created when the suspension awaiting the async
+operation is resumed, so again, no threads may terminate.
+
+Otherwise, the system terminates. This model has two distinct problems.
+
+
+
+\section{Channel Semantics}
 Reads and writes on channels are performed with special service calls
 which are given a channel endpoint reference. The semantic rules
 are simple enough.
@@ -172,6 +191,11 @@ the channel. Data is transfered from the writer to the reader.
 Nominally, both fibres then become active fibres of their 
 respective processes.
 
+\subsection{Read Semantics}
+Dual to write semantics except the direction of data transfer is the same
+in both cases, from writer to reader.
+
+
 \subsection{Channel types}
 There are three types of channels.
 
@@ -187,9 +211,9 @@ of the operations. It is always safe between fibres of the same system.
 \subsubsection{Asynchronous Channel}
 This kind of channel must be used to communicate with external devices.
 
-First, a device must send a signal to a system when it completes an I/O
+First, a device must send a signal to a process when it completes an I/O
 operation. Completion of an I/O operation causes a suspended fibre to
-become active and the signal is required to wait up any sleeping threads
+become active and the signal is required to wake up any sleeping threads
 so allow the fibre to be resumed.
 
 Second, a fibre must send a signal to a device when it initiates
@@ -201,11 +225,6 @@ it must push the requesting fibre back onto the process active set
 and then issue the required signal. However the precise action
 of the device thread apart from this is dependent on the nature
 of the device.
-
-
-\subsection{Read Semantics}
-Dual to write semantics except the direction of data transfer is the same
-in both cases, from writer to reader.
 
 \section{Sequential Model}
 A closed process with a single thread can be implemented using sequential channels,
